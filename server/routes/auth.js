@@ -5,12 +5,22 @@ const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const db = require('../db');
 
+// Predetermined list of valid batch years — keep this in sync with the
+// frontend's BATCHES list in Auth.jsx.
+const CURRENT_YEAR = new Date().getFullYear();
+const VALID_BATCHES = Array.from({ length: 30 }, (_, i) => (CURRENT_YEAR - 1 - i).toString());
+
 // Joi Validation Schema for Registration
 const registerSchema = Joi.object({
   name: Joi.string().min(2).max(255).trim().required(),
   email: Joi.string().email().trim().lowercase().required(),
   password: Joi.string().min(6).max(100).required(),
-  batch: Joi.string().max(20).trim().required(),
+  batch: Joi.string()
+    .valid(...VALID_BATCHES)
+    .required()
+    .messages({
+      'any.only': `Batch must be between: ${Math.min(...VALID_BATCHES)} and ${Math.max(...VALID_BATCHES)}`
+    }),
   dept_code: Joi.string().max(10).trim().required()
 });
 

@@ -10,6 +10,10 @@ const DEPARTMENTS = [
   { code: '3', name: 'Industrial & Production Engineering' }
 ];
 
+// Predetermined batch years — newest first. Adjust the range as needed.
+const CURRENT_YEAR = new Date().getFullYear();
+const BATCHES = Array.from({ length: 30 }, (_, i) => (CURRENT_YEAR - 1 - i).toString());
+
 export default function Auth({ isSignup, onSuccess }) {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -101,11 +105,19 @@ export default function Auth({ isSignup, onSuccess }) {
                   <input
                     type="text"
                     name="batch"
+                    list="batch-options"
                     required
+                    autoComplete="off"
+                    placeholder="e.g. 2022"
                     value={formData.batch}
                     onChange={handleChange}
                     className="p5-input"
                   />
+                  <datalist id="batch-options">
+                    {BATCHES.map((year) => (
+                      <option key={year} value={year} />
+                    ))}
+                  </datalist>
                 </div>
                 <div>
                   <label className="p5-label">Department</label>
