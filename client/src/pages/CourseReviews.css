@@ -1,0 +1,44 @@
+.p5-courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.p5-course-card {
+  position: relative;
+  background-color: var(--p5-card-bg);
+  border: 1px solid var(--p5-border);
+  padding: 1.5rem;
+}
+
+.p5-diff-tag {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-family: var(--font-p5);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--p5-red);
+  border: 1px solid var(--p5-red);
+  padding: 1px 6px;
+}
+
+.p5-course-card h3 {
+  margin: 0 0 0.3rem 0;
+  font-family: var(--font-p5);
+  font-size: 1.5rem;
+  color: var(--p5-text-main);
+}
+
+.p5-course-name {
+  color: var(--p5-text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.p5-course-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-p5);
+}

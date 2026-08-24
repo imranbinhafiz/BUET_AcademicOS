@@ -1,0 +1,340 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500&display=swap');
+
+:root {
+  --p5-black: #0d0d0f;
+  --p5-card-bg: #16161a;
+  --p5-red: #b91522;
+  --p5-red-hover: #d91a29;
+  --p5-text-main: #f0f0f3;
+  --p5-text-muted: #a1a1aa;
+  --p5-border: #2d2d32;
+  
+  /* FONT STACKS */
+  --font-p5: 'Rajdhani', 'Trebuchet MS', sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* LAYOUT CONTAINER */
+.p5-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--p5-black);
+  color: var(--p5-text-main);
+  font-family: var(--font-body);
+}
+
+/* SIDEBAR STYLES */
+.p5-sidebar {
+  width: 260px;
+  background-color: #0a0a0c;
+  border-right: 2px solid var(--p5-border);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1rem;
+  box-sizing: border-box;
+}
+
+.p5-sidebar-header {
+  margin-bottom: 2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--p5-border);
+}
+
+.p5-brand-sub {
+  background-color: var(--p5-red);
+  color: var(--p5-text-main);
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  font-family: var(--font-p5);
+}
+
+.p5-brand-title {
+  margin: 0.4rem 0 0 0;
+  font-size: 1.6rem;
+  color: var(--p5-text-main);
+  font-family: var(--font-p5);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+/* NAVIGATION LINKS */
+.p5-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-grow: 1;
+}
+
+.p5-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: #141417;
+  color: var(--p5-text-muted);
+  text-decoration: none;
+  font-family: var(--font-p5);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  border-left: 3px solid transparent;
+  transition: all 0.15s ease-in-out;
+}
+
+.p5-nav-item:hover {
+  background-color: #1e1e23;
+  color: var(--p5-text-main);
+  border-left-color: var(--p5-red);
+  transform: translateX(3px);
+}
+
+.p5-nav-item.active {
+  background-color: var(--p5-red);
+  color: var(--p5-text-main);
+  border-left-color: var(--p5-text-main);
+}
+
+.p5-nav-icon {
+  font-size: 1rem;
+}
+
+.p5-sidebar-footer {
+  padding-top: 1rem;
+  border-top: 1px solid var(--p5-border);
+}
+
+.p5-dept-tag {
+  color: var(--p5-text-muted);
+  font-family: var(--font-p5);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+}
+
+/* MAIN WRAPPER */
+.p5-main-wrapper {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* TOPBAR STYLES */
+.p5-topbar {
+  height: 65px;
+  background-color: #111114;
+  border-bottom: 1px solid var(--p5-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+}
+
+.p5-page-indicator {
+  color: var(--p5-red);
+  font-family: var(--font-p5);
+  font-weight: 700;
+  letter-spacing: 2px;
+  font-size: 0.9rem;
+}
+
+.p5-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+/* NOTIFICATION BADGE */
+.p5-notification-box {
+  position: relative;
+  cursor: pointer;
+  background-color: #1c1c21;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--p5-border);
+  transition: background 0.2s;
+}
+
+.p5-notification-box:hover {
+  background-color: #2b2b32;
+}
+
+.p5-notification-icon {
+  font-size: 1.1rem;
+}
+
+.p5-notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: var(--p5-red);
+  color: var(--p5-text-main);
+  font-family: var(--font-p5);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+}
+
+/* USER PROFILE WIDGET */
+.p5-profile-widget {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background-color: #161619;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--p5-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.p5-profile-widget:hover {
+  border-color: var(--p5-red);
+  background-color: #222227;
+}
+
+.p5-avatar-frame {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--p5-red);
+  overflow: hidden;
+}
+
+.p5-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.p5-user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.p5-user-name {
+  font-family: var(--font-p5);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--p5-text-main);
+  line-height: 1;
+  letter-spacing: 0.5px;
+}
+
+.p5-user-role {
+  font-family: var(--font-p5);
+  font-weight: 600;
+  font-size: 0.7rem;
+  color: var(--p5-red);
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+
+/* MAIN BODY CONTENT */
+.p5-content {
+  padding: 2rem;
+  flex-grow: 1;
+}
+
+.p5-welcome-card {
+  background-color: var(--p5-card-bg);
+  border: 1px solid var(--p5-border);
+  border-left: 4px solid var(--p5-red);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.p5-welcome-banner h2 {
+  margin: 0 0 0.4rem 0;
+  font-family: var(--font-p5);
+  font-weight: 700;
+  font-size: 1.6rem;
+  color: var(--p5-text-main);
+  letter-spacing: 1.5px;
+}
+
+.p5-welcome-banner p {
+  margin: 0;
+  color: var(--p5-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+
+/* CARDS GRID */
+.p5-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+
+.p5-grid-card {
+  background-color: var(--p5-card-bg);
+  border: 1px solid var(--p5-border);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: border-color 0.2s;
+}
+
+.p5-grid-card:hover {
+  border-color: #3f3f46;
+}
+
+.p5-grid-card h3 {
+  margin-top: 0;
+  color: var(--p5-red);
+  font-family: var(--font-p5);
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: 1px;
+}
+
+.p5-grid-card p {
+  font-family: var(--font-body);
+  color: var(--p5-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.p5-card-btn {
+  display: inline-block;
+  margin-top: 1rem;
+  align-self: flex-start;
+  background-color: #27272a;
+  color: var(--p5-text-main);
+  padding: 0.4rem 0.8rem;
+  text-decoration: none;
+  font-family: var(--font-p5);
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  border: 1px solid #3f3f46;
+  transition: all 0.2s;
+}
+
+.p5-card-btn:hover {
+  background-color: var(--p5-red);
+  color: #ffffff;
+  border-color: var(--p5-red);
+}
+
+/* TOPBAR LOG IN BUTTON */
+.p5-topbar-login-btn {
+  background-color: #1c1c21;
+  color: var(--p5-text-main);
+  border: 1px solid var(--p5-border);
+  padding: 0.45rem 1.2rem;
+  font-family: var(--font-p5);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 1.5px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.p5-topbar-login-btn:hover {
+  background-color: var(--p5-red);
+  color: #ffffff;
+  border-color: var(--p5-red);
+  transform: translateY(-1px);
+}
