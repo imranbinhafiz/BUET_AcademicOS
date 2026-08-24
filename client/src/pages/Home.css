@@ -338,3 +338,29 @@
   border-color: var(--p5-red);
   transform: translateY(-1px);
 }
+
+.p5-sidebar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-top: 1px solid #151515;
+}
+
+.p5-logout-btn {
+  background: transparent;
+  border: 1px solid #b91522;
+  color: #b91522;
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.p5-logout-btn:hover {
+  background: #b91522;
+  color: #ffffff;
+}

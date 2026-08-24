@@ -1,5 +1,4 @@
 import React from 'react';
-import Sidebar from '../components/sidebar';
 import './CourseReviews.css';
 
 export default function CourseReviews() {
@@ -10,33 +9,24 @@ export default function CourseReviews() {
   ];
 
   return (
-    <div className="p5-layout">
-      <Sidebar />
-      <div className="p5-main-wrapper">
-        <header className="p5-topbar">
-          <span className="p5-page-indicator">SYSTEM // COURSE_EVALUATIONS</span>
-        </header>
-
-        <main className="p5-content">
-          <div className="p5-page-header">
-            <h2>COURSE SURVIVAL & REVIEWS</h2>
-          </div>
-
-          <div className="p5-courses-grid">
-            {courses.map((c) => (
-              <div key={c.code} className="p5-course-card">
-                <span className="p5-diff-tag">{c.difficulty}</span>
-                <h3>{c.code}</h3>
-                <p className="p5-course-name">{c.name}</p>
-                <div className="p5-course-footer">
-                  <span>RATING: <strong>{c.rating}</strong></span>
-                  <button className="p5-card-btn">READ REVIEWS</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </main>
+    <>
+      <div className="p5-page-header">
+        <h2>COURSE SURVIVAL & REVIEWS</h2>
       </div>
-    </div>
+
+      <div className="p5-courses-grid">
+        {courses.map((c) => (
+          <div key={c.code} className="p5-course-card">
+            <span className="p5-diff-tag">{c.difficulty}</span>
+            <h3>{c.code}</h3>
+            <p className="p5-course-name">{c.name}</p>
+            <div className="p5-course-footer">
+              <span>RATING: <strong>{c.rating}</strong></span>
+              <button className="p5-card-btn">READ REVIEWS</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

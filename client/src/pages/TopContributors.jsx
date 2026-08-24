@@ -1,5 +1,4 @@
 import React from 'react';
-import Sidebar from '../components/sidebar';
 import './TopContributors.css';
 
 export default function TopContributors() {
@@ -10,30 +9,21 @@ export default function TopContributors() {
   ];
 
   return (
-    <div className="p5-layout">
-      <Sidebar />
-      <div className="p5-main-wrapper">
-        <header className="p5-topbar">
-          <span className="p5-page-indicator">SYSTEM // HALL_OF_FAME</span>
-        </header>
-
-        <main className="p5-content">
-          <div className="p5-page-header">
-            <h2>TOP ACADEMIC CONTRIBUTORS</h2>
-          </div>
-
-          <div className="p5-leaderboard-table">
-            {leaders.map((item) => (
-              <div key={item.rank} className="p5-leader-row">
-                <span className="p5-rank">{item.rank}</span>
-                <span className="p5-leader-name">{item.name}</span>
-                <span className="p5-leader-uploads">{item.uploads} UPLOADS</span>
-                <span className="p5-leader-points">{item.points}</span>
-              </div>
-            ))}
-          </div>
-        </main>
+    <>
+      <div className="p5-page-header">
+        <h2>TOP ACADEMIC CONTRIBUTORS</h2>
       </div>
-    </div>
+
+      <div className="p5-leaderboard-table">
+        {leaders.map((item) => (
+          <div key={item.rank} className="p5-leader-row">
+            <span className="p5-rank">{item.rank}</span>
+            <span className="p5-leader-name">{item.name}</span>
+            <span className="p5-leader-uploads">{item.uploads} UPLOADS</span>
+            <span className="p5-leader-points">{item.points}</span>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

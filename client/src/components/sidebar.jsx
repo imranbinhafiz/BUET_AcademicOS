@@ -1,57 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import './sidebar.css';
 
 export default function Sidebar() {
-  const location = useLocation();
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      const token = localStorage.getItem('token');
-      if (storedUser && token) {
-        setUser(JSON.parse(storedUser));
-      }
-    } catch (e) {
-      setUser(null);
-    }
-  }, []);
-
-  const navItems = [
-    { label: 'HOME', path: '/', icon: '✦' },
-    { label: 'RESOURCES', path: '/resources', icon: '📁' },
-    { label: 'COURSE REVIEWS', path: '/course-reviews', icon: '📝' },
-    { label: 'TEACHER REVIEWS', path: '/teacher-reviews', icon: '🎓' },
-    { label: 'TOP CONTRIBUTORS', path: '/top-contributors', icon: '👑' }
-  ];
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const deptCode = user.dept_code || '6';
 
   return (
-    <aside className="p5-sidebar">
-      <div className="p5-sidebar-header">
-        <span className="p5-brand-sub">BUET</span>
-        <h1 className="p5-brand-title">ACADEMICOS</h1>
+    <aside className="theme-sidebar">
+      <div className="sidebar-brand-container">
+        <span className="brand-badge-red">BUET</span>
+        <h2 className="brand-title-text">ACADEMICOS</h2>
       </div>
 
-      <nav className="p5-nav">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.label}
-              to={item.path}
-              className={`p5-nav-item ${isActive ? 'active' : ''}`}
-            >
-              <span className="p5-nav-icon">{item.icon}</span>
-              <span className="p5-nav-text">{item.label}</span>
-            </Link>
-          );
-        })}
+      <nav className="sidebar-nav-list">
+        <NavLink to="/" className={({ isActive }) => isActive ? 'nav-card active' : 'nav-card'}>
+          <span className="nav-icon">✦</span>
+          <span className="nav-label">HOME</span>
+        </NavLink>
+
+        <NavLink to="/resources" className={({ isActive }) => isActive ? 'nav-card active' : 'nav-card'}>
+          <span className="nav-icon">📁</span>
+          <span className="nav-label">RESOURCES</span>
+        </NavLink>
+
+        <NavLink to="/course-reviews" className={({ isActive }) => isActive ? 'nav-card active' : 'nav-card'}>
+          <span className="nav-icon">📝</span>
+          <span className="nav-label">COURSE REVIEWS</span>
+        </NavLink>
+
+        <NavLink to="/teacher-reviews" className={({ isActive }) => isActive ? 'nav-card active' : 'nav-card'}>
+          <span className="nav-icon">🎓</span>
+          <span className="nav-label">TEACHER REVIEWS</span>
+        </NavLink>
+
+        <NavLink to="/top-contributors" className={({ isActive }) => isActive ? 'nav-card active' : 'nav-card'}>
+          <span className="nav-icon">👑</span>
+          <span className="nav-label">TOP CONTRIBUTORS</span>
+        </NavLink>
       </nav>
 
-      <div className="p5-sidebar-footer">
-        <span className="p5-dept-tag">
-          DEPT // {user?.dept_code || 'GUEST'}
-        </span>
+      <div className="sidebar-footer-tag">
+        <span>User //{role}</span>
       </div>
     </aside>
   );
