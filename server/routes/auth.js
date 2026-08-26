@@ -8,7 +8,7 @@ const db = require('../db');
 // Predetermined list of valid batch years — keep this in sync with the
 // frontend's BATCHES list in Auth.jsx.
 const CURRENT_YEAR = new Date().getFullYear();
-const VALID_BATCHES = Array.from({ length: 30 }, (_, i) => (CURRENT_YEAR - 1 - i).toString());
+const VALID_BATCHES = Array.from({ length: 8 }, (_, i) => (CURRENT_YEAR - 1 - i).toString());
 
 // Joi Validation Schema for Registration
 const registerSchema = Joi.object({

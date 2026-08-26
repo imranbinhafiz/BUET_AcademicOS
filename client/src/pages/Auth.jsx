@@ -12,7 +12,7 @@ const DEPARTMENTS = [
 
 // Predetermined batch years — newest first. Adjust the range as needed.
 const CURRENT_YEAR = new Date().getFullYear();
-const BATCHES = Array.from({ length: 30 }, (_, i) => (CURRENT_YEAR - 1 - i).toString());
+const BATCHES = Array.from({ length: 8 }, (_, i) => (CURRENT_YEAR - 1 - i).toString());
 
 export default function Auth({ isSignup, onSuccess }) {
   const navigate = useNavigate();
