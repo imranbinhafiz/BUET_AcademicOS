@@ -51,7 +51,7 @@ CREATE TABLE public.users (
     password character varying(255) NOT NULL,
     dept_code character varying(10),
     bio text,
-    avatar_url text
+    avatar_path text
 );
 
 CREATE SEQUENCE public."User_user_id_seq"
