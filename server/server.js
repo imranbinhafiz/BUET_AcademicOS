@@ -22,9 +22,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Routes
 const authRoutes = require('./routes/auth');
 const resourceRoutes = require('./routes/resources');
+const courseReviewsRoutes = require('./routes/courseReviews');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/resources', resourceRoutes);
+app.use('/api/course-reviews', courseReviewsRoutes);
 
 // Root route
 app.get('/', (req, res) => {
