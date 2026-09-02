@@ -4,10 +4,13 @@ const db = require('../db');
 // Sorting both numeric parts keeps 10-1 from appearing before 2-1.
 async function getAvailableTerms() {
   const result = await db.query(
-    `SELECT DISTINCT level_term
-     FROM courses
-     WHERE level_term ~ '^[0-9]+-[0-9]+$'
-       AND archived_at IS NULL
+    `SELECT level_term
+     FROM (
+       SELECT DISTINCT level_term
+       FROM courses
+       WHERE level_term ~ '^[0-9]+-[0-9]+$'
+         AND archived_at IS NULL
+     ) AS available_terms
      ORDER BY
        split_part(level_term, '-', 1)::integer,
        split_part(level_term, '-', 2)::integer`
@@ -53,24 +56,26 @@ async function getTermSummary(userId, levelTerm) {
      FROM user_course_performance ucp
      JOIN courses c ON c.course_code = ucp.course_code
      WHERE ucp.user_id = $1
-       AND c.level_term = $2`,
+       AND c.level_term = $2
+       AND c.archived_at IS NULL`,
     [userId, levelTerm]
   );
 
   return result.rows[0];
 }
 
-async function saveCoursePerformance(userId, courseCode, gradePoint) {
+async function saveCoursePerformance(userId, courseCode, levelTerm, gradePoint) {
   const result = await db.query(
     `INSERT INTO user_course_performance (user_id, course_code, grade_point)
-     SELECT $1, c.course_code, $3
+     SELECT $1, c.course_code, $4
      FROM courses c
      WHERE c.course_code = $2
+       AND c.level_term = $3
        AND c.archived_at IS NULL
      ON CONFLICT (user_id, course_code)
      DO UPDATE SET grade_point = EXCLUDED.grade_point
      RETURNING user_id, course_code, grade_point`,
-    [userId, courseCode, gradePoint]
+    [userId, courseCode, levelTerm, gradePoint]
   );
 
   return result.rows[0] || null;
@@ -87,23 +92,32 @@ async function deleteCoursePerformance(userId, courseCode) {
   return result.rows[0] || null;
 }
 
-async function getUserBatch(userId) {
+async function getActiveUser(userId) {
   const result = await db.query(
-    `SELECT batch
+    `SELECT user_id, batch, role
      FROM users
      WHERE user_id = $1 AND deleted_at IS NULL`,
     [userId]
   );
 
-  return result.rows[0]?.batch || null;
+  return result.rows[0] || null;
 }
 
-// Batch statistics are anonymous aggregates. Each student's term GPA is
-// calculated first, then those GPAs are aggregated, so students with more
-// recorded courses do not receive extra weight in the batch average.
+// Batch statistics are based only on complete term results. If a student has
+// entered only one or two courses, that partial snapshot must not affect the
+// batch's term GPA, highest GPA, or lowest GPA.
 async function getBatchSummary(batch, levelTerm) {
   const result = await db.query(
-    `WITH student_term_results AS (
+    `WITH term_courses AS (
+       SELECT course_code
+       FROM courses
+       WHERE level_term = $2
+         AND archived_at IS NULL
+     ),
+     term_course_count AS (
+       SELECT COUNT(*)::integer AS expected_courses FROM term_courses
+     ),
+     student_term_results AS (
        SELECT
          u.user_id,
          COUNT(*)::integer AS recorded_courses,
@@ -117,7 +131,15 @@ async function getBatchSummary(batch, levelTerm) {
          AND u.role = 'student'
          AND u.deleted_at IS NULL
          AND c.level_term = $2
+         AND c.archived_at IS NULL
        GROUP BY u.user_id
+     ),
+     complete_term_results AS (
+       SELECT str.*
+       FROM student_term_results str
+       CROSS JOIN term_course_count tcc
+       WHERE tcc.expected_courses > 0
+         AND str.recorded_courses = tcc.expected_courses
      ),
      batch_size AS (
        SELECT COUNT(*)::integer AS total_students
@@ -125,16 +147,31 @@ async function getBatchSummary(batch, levelTerm) {
        WHERE batch = $1
          AND role = 'student'
          AND deleted_at IS NULL
+     ),
+     data_coverage AS (
+       SELECT COUNT(*)::integer AS students_with_any_data
+       FROM student_term_results
+     ),
+     complete_aggregate AS (
+       SELECT
+         COUNT(*)::integer AS completed_students,
+         ROUND(AVG(term_gpa), 2) AS batch_average_gpa,
+         ROUND(MAX(term_gpa), 2) AS highest_gpa,
+         ROUND(MIN(term_gpa), 2) AS lowest_gpa
+       FROM complete_term_results
      )
      SELECT
        bs.total_students,
-       COUNT(str.user_id)::integer AS students_with_data,
-       ROUND(AVG(str.term_gpa), 2) AS batch_average_gpa,
-       ROUND(MAX(str.term_gpa), 2) AS highest_gpa,
-       ROUND(MIN(str.term_gpa), 2) AS lowest_gpa
+       tcc.expected_courses,
+       dc.students_with_any_data,
+       ca.completed_students,
+       ca.batch_average_gpa,
+       ca.highest_gpa,
+       ca.lowest_gpa
      FROM batch_size bs
-     LEFT JOIN student_term_results str ON TRUE
-     GROUP BY bs.total_students`,
+     CROSS JOIN term_course_count tcc
+     CROSS JOIN data_coverage dc
+     CROSS JOIN complete_aggregate ca`,
     [batch, levelTerm]
   );
 
@@ -143,24 +180,38 @@ async function getBatchSummary(batch, levelTerm) {
 
 async function getBatchCourseStats(batch, levelTerm) {
   const result = await db.query(
-    `SELECT
+    `WITH term_courses AS (
+       SELECT course_code, title, credits
+       FROM courses
+       WHERE level_term = $2
+         AND archived_at IS NULL
+     ),
+     complete_students AS (
+       SELECT u.user_id
+       FROM users u
+       JOIN user_course_performance ucp ON ucp.user_id = u.user_id
+       JOIN term_courses tc ON tc.course_code = ucp.course_code
+       WHERE u.batch = $1
+         AND u.role = 'student'
+         AND u.deleted_at IS NULL
+       GROUP BY u.user_id
+       HAVING COUNT(*) = (SELECT COUNT(*) FROM term_courses)
+     ),
+     complete_results AS (
+       SELECT ucp.user_id, ucp.course_code, ucp.grade_point
+       FROM user_course_performance ucp
+       JOIN complete_students cs ON cs.user_id = ucp.user_id
+     )
+     SELECT
        c.course_code,
        c.title,
        c.credits,
-       COUNT(ucp.user_id) FILTER (WHERE u.user_id IS NOT NULL)::integer AS submitted_students,
-       ROUND(AVG(ucp.grade_point) FILTER (WHERE u.user_id IS NOT NULL), 2) AS average_grade_point,
-       MAX(ucp.grade_point) FILTER (WHERE u.user_id IS NOT NULL) AS highest_grade_point,
-       MIN(ucp.grade_point) FILTER (WHERE u.user_id IS NOT NULL) AS lowest_grade_point
-     FROM courses c
-     LEFT JOIN user_course_performance ucp
-       ON ucp.course_code = c.course_code
-     LEFT JOIN users u
-       ON u.user_id = ucp.user_id
-      AND u.batch = $1
-      AND u.role = 'student'
-      AND u.deleted_at IS NULL
-     WHERE c.level_term = $2
-       AND c.archived_at IS NULL
+       COUNT(cr.user_id)::integer AS submitted_students,
+       ROUND(AVG(cr.grade_point), 2) AS average_grade_point,
+       MAX(cr.grade_point) AS highest_grade_point,
+       MIN(cr.grade_point) AS lowest_grade_point
+     FROM term_courses c
+     LEFT JOIN complete_results cr ON cr.course_code = c.course_code
      GROUP BY c.course_code, c.title, c.credits
      ORDER BY c.course_code`,
     [batch, levelTerm]
@@ -175,7 +226,7 @@ module.exports = {
   getTermSummary,
   saveCoursePerformance,
   deleteCoursePerformance,
-  getUserBatch,
+  getActiveUser,
   getBatchSummary,
   getBatchCourseStats
 };
