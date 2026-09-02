@@ -1,44 +1,744 @@
-.p5-courses-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.25rem;
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700;800&family=Inter:wght@400;500&display=swap');
+
+/* ==========================================================================
+   CourseReviews.css
+   ========================================================================== */
+:root {
+  --cr-red: #b91522;
+  --cr-red-hover: #d91a29;;
+  --cr-black: #0f0f0f;
+  --cr-dark-gray: #1a1a1a;
+  --cr-card-bg: #222222;
+  --cr-card-border: #333333;
+  --cr-text-light: #e4e4e7;
+  --cr-text-muted: #94949e;
+  --font-cr: 'Rajdhani', sans-serif;
+  --font-p5: 'Rajdhani', sans-serif;
 }
 
-.p5-course-card {
-  position: relative;
-  background-color: var(--p5-card-bg);
-  border: 1px solid var(--p5-border);
+/* Base Layout Wrapper */
+.cr-reviews-page {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 1.5rem;
+  color: var(--cr-text-light);
+  box-sizing: border-box;
 }
 
-.p5-diff-tag {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  font-family: var(--font-p5);
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--p5-red);
-  border: 1px solid var(--p5-red);
-  padding: 1px 6px;
-}
-
-.p5-course-card h3 {
-  margin: 0 0 0.3rem 0;
-  font-family: var(--font-p5);
-  font-size: 1.5rem;
-  color: var(--p5-text-main);
-}
-
-.p5-course-name {
-  color: var(--p5-text-muted);
-  font-size: 0.9rem;
-  margin-bottom: 1.5rem;
-}
-
-.p5-course-footer {
+/* Page Header */
+.p5-page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-family: var(--font-p5);
+  margin-bottom: 1.5rem;
+  border-bottom: 3px solid var(--cr-red);
+  padding-bottom: 0.75rem;
+}
+
+.p5-page-header h2 {
+  margin: 0;
+  font-size: 1.7rem;
+  font-family: var(--font-cr);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--cr-text-light);
+}
+
+/* Universal Action Buttons */
+.p5-action-btn,
+.p5-card-btn,
+.p5-btn,
+.p5-order-btn,
+.cr-report-btn {
+  font-family: var(--font-cr);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 1px solid var(--cr-red);
+  background-color: var(--cr-red);
+  color: #fff;
+  padding: 0.5rem 1.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.p5-action-btn:hover,
+.p5-card-btn:hover,
+.p5-btn:hover,
+.p5-order-btn:hover {
+  background-color: var(--cr-red-hover);
+  border-color: var(--cr-red-hover);
+  color: #fff;
+}
+
+.p5-action-btn.active {
+  background-color: var(--cr-red-hover);
+  color: #fff;
+}
+
+.p5-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Cancel-style button: black fill, red border, red text */
+.p5-versions-btn {
+  font-family: var(--font-cr);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 1px solid var(--cr-red);
+  background-color: var(--cr-black);
+  color: var(--cr-red);
+  padding: 0.5rem 1.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.p5-versions-btn:hover {
+  background-color: #1a1a1a;
+  border-color: var(--cr-red-hover);
+  color: var(--cr-red-hover);
+}
+
+/* Write Review Form
+   ------------------------------------------------------------------------
+   Key fix: no fixed/max height on the form itself beyond a scrollable cap,
+   and it's a normal block-level element in flow (not absolutely positioned),
+   so as the textarea grows, the form grows too, and the Post/Cancel buttons
+   at the bottom get pushed down and stay reachable by scrolling the page. */
+.p5-upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--cr-dark-gray);
+  border: 1px solid var(--cr-card-border);
+  border-radius: 6px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  margin-bottom: 2rem;
+  box-sizing: border-box;
+  max-height: 80vh;
+  overflow-y: auto;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    max-height 0.35s ease,
+    opacity 0.25s ease,
+    transform 0.3s ease,
+    padding 0.3s ease,
+    margin-bottom 0.3s ease;
+}
+
+.p5-upload-form.p5-form-closed {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-12px);
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-width: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.p5-upload-form > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.p5-label {
+  font-family: var(--font-cr);
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  color: var(--cr-text-muted);
+  text-transform: uppercase;
+}
+
+/* Inputs & Text Controls */
+.p5-input,
+.p5-sort-select {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  background: #111;
+  border: 1px solid var(--cr-card-border);
+  border-radius: 4px;
+  color: var(--cr-text-light);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.p5-input:focus,
+.p5-sort-select:focus {
+  border-color: var(--cr-red);
+}
+
+/* Number input spin-arrow styling (difficulty / usefulness scores) */
+.p5-input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.p5-input[type='number']::-webkit-inner-spin-button,
+.p5-input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+  height: 1.6rem;
+  width: 1.1rem;
+  background-color: var(--cr-red);
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 1;
+}
+
+/* Auto-growing textarea used for the review comment.
+   resize is disabled and overflow hidden because the JS in the
+   component sets `height` directly from `scrollHeight` on every
+   keystroke — the box itself grows taller as you type, pushing
+   the Post/Cancel buttons below it further down the page. */
+textarea.p5-input {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.5;
+  display: block;
+}
+
+/* Styled File Upload Component */
+.p5-file-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background-color: #111111;
+  border: 1px solid var(--cr-card-border);
+  border-radius: 4px;
+  padding: 0.4rem 0.75rem;
+}
+
+.p5-file-btn {
+  background-color: var(--cr-red);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-cr);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.p5-file-btn:hover {
+  background-color: var(--cr-red-hover);
+}
+
+.p5-file-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  color: var(--cr-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p5-file-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Search Bar & Clear Button */
+.p5-course-search-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.p5-course-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding-right: 2.5rem;
+}
+
+.p5-parent-clear-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--cr-text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.p5-parent-clear-btn:hover {
+  color: var(--cr-red);
+}
+
+/* Sort Bar */
+.p5-sort-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.p5-sort-select {
+  flex: 1;
+  min-width: 160px;
+}
+
+/* Main Courses Grid */
+.cr-courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.cr-course-card {
+  background: var(--cr-card-bg);
+  border: 1px solid var(--cr-card-border);
+  border-radius: 6px;
+  padding: 1.25rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.cr-course-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--cr-red);
+}
+
+.cr-course-card h3 {
+  margin: 0.5rem 0 0.25rem 0;
+  font-family: var(--font-cr);
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: 0.5px;
+}
+
+.cr-course-name {
+  font-family: var(--font-cr);
+  color: var(--cr-text-muted);
+  font-size: 0.95rem;
+  margin-bottom: 1.25rem;
+  flex-grow: 1;
+}
+
+.cr-course-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 0.75rem;
+  font-family: var(--font-cr);
+  font-size: 0.85rem;
+}
+
+.cr-diff-tag {
+  display: inline-block;
+  font-family: var(--font-cr);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  margin-bottom: 0.25rem;
+}
+
+.cr-diff-easy {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+}
+
+.cr-diff-medium {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+}
+
+.cr-diff-hard {
+  background: rgba(209, 0, 0, 0.2);
+  color: var(--cr-red-hover);
+}
+
+.cr-diff-n\/a {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--cr-text-muted);
+}
+
+/* States & Messaging */
+.p5-empty-state {
+  text-align: center;
+  font-family: var(--font-cr);
+  color: var(--cr-text-muted);
+  padding: 2rem;
+  font-size: 1rem;
+  width: 100%;
+}
+
+.p5-error {
+  background: rgba(209, 0, 0, 0.15);
+  border: 1px solid var(--cr-red);
+  border-radius: 4px;
+  color: #ff6b6b;
+  font-family: var(--font-cr);
+  font-weight: 600;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+/* Fullscreen AniList-Style Blurred Overlay Modal */
+.cr-anilist-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+.cr-anilist-container {
+  background: var(--cr-dark-gray);
+  border: 2px solid var(--cr-red);
+  border-radius: 6px;
+  width: 100%;
+  max-width: 750px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+}
+
+.cr-anilist-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.25rem;
+  cursor: pointer;
+  z-index: 10;
+  transition: color 0.2s ease;
+}
+
+.cr-anilist-close-btn:hover {
+  color: var(--cr-red);
+}
+
+.cr-anilist-header {
+  padding: 1.25rem 1.5rem;
+  background: #111;
+  border-bottom: 1px solid var(--cr-card-border);
+}
+
+.cr-anilist-tag {
+  font-family: var(--font-cr);
+  font-weight: 700;
+  color: var(--cr-red);
+  font-size: 0.8rem;
+  letter-spacing: 1.5px;
+}
+
+.cr-anilist-header h2 {
+  margin: 0.25rem 0 0 0;
+  font-family: var(--font-cr);
+  font-weight: 700;
+  font-size: 1.8rem;
+}
+
+.cr-anilist-reviews-list {
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* AniList Cards Inside Modal */
+.cr-anilist-card {
+  background: #111;
+  border: 1px solid var(--cr-card-border);
+  border-radius: 4px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cr-anilist-user-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cr-anilist-author {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cr-anilist-avatar {
+  width: 40px;
+  height: 40px;
+  background: var(--cr-red);
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-cr);
+  font-size: 1.2rem;
+  border-radius: 4px;
+}
+
+.cr-anilist-user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.cr-author-name {
+  font-family: var(--font-cr);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.cr-author-meta {
+  font-family: var(--font-cr);
+  font-size: 0.8rem;
+  color: var(--cr-text-muted);
+}
+
+/* Upvote / Downvote Widget */
+.p5-vote-column {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #1a1a1a;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--cr-card-border);
+  border-radius: 4px;
+}
+
+.p5-vote-btn {
+  background: transparent;
+  border: none;
+  color: var(--cr-text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.4rem;
+  transition: color 0.2s ease;
+}
+
+.p5-vote-btn:hover {
+  color: #fff;
+}
+
+.p5-vote-active-up {
+  color: #4caf50;
+}
+
+.p5-vote-active-down {
+  color: var(--cr-red);
+}
+
+.p5-vote-tally {
+  font-family: var(--font-cr);
+  font-weight: 700;
+  font-size: 0.9rem;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.cr-anilist-body {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #ddd;
+}
+
+.cr-anilist-text {
+  margin: 0 0 0.75rem 0;
+  white-space: pre-wrap;
+}
+
+.cr-attachment-link {
+  font-family: var(--font-cr);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.cr-attachment-link a {
+  color: var(--cr-red-hover);
+  text-decoration: underline;
+}
+
+/* Bottom Rating Banner */
+.cr-anilist-bottom-rating {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1a1a1a;
+  border-left: 3px solid var(--cr-red);
+  padding: 0.75rem 1rem;
+}
+
+.cr-rating-metrics {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.cr-metric {
+  display: flex;
+  flex-direction: column;
+}
+
+.cr-metric-label {
+  font-family: var(--font-cr);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--cr-text-muted);
+  letter-spacing: 1px;
+}
+
+.cr-metric-val {
+  font-family: var(--font-cr);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.cr-anilist-final-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.cr-score-label {
+  font-family: var(--font-cr);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--cr-text-muted);
+  letter-spacing: 1px;
+}
+
+.cr-score-number {
+  font-family: var(--font-cr);
+  font-weight: 800;
+  font-size: 1.4rem;
+  color: var(--cr-red-hover);
+}
+
+.cr-score-number span {
+  font-size: 0.85rem;
+  color: var(--cr-text-muted);
+}
+
+/* Report Action Elements */
+.cr-anilist-actions {
+  display: flex;
+  justify-content: flex-end;
+  font-family: var(--font-cr);
+  font-size: 0.8rem;
+}
+
+.cr-report-btn {
+  border: none;
+  background: transparent;
+  color: var(--cr-text-muted);
+  padding: 0;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.cr-report-btn:hover {
+  color: var(--cr-red);
+  background: transparent;
+}
+
+.cr-report-box {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.cr-report-box input {
+  flex: 1;
+}
+
+.cr-report-box button {
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+}
+
+.cr-reported-note {
+  font-family: var(--font-cr);
+  color: var(--cr-red);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+/* Custom Scrollbar Styling (Write Review form + reviews modal list) */
+.p5-upload-form,
+.cr-anilist-reviews-list,
+.p5-parent-suggestions {
+  scrollbar-width: thin;
+  scrollbar-color: var(--cr-red) #111;
+}
+
+.p5-upload-form::-webkit-scrollbar,
+.cr-anilist-reviews-list::-webkit-scrollbar,
+.p5-parent-suggestions::-webkit-scrollbar {
+  width: 8px;
+}
+
+.p5-upload-form::-webkit-scrollbar-track,
+.cr-anilist-reviews-list::-webkit-scrollbar-track,
+.p5-parent-suggestions::-webkit-scrollbar-track {
+  background: #111;
+  border-radius: 4px;
+}
+
+.p5-upload-form::-webkit-scrollbar-thumb,
+.cr-anilist-reviews-list::-webkit-scrollbar-thumb,
+.p5-parent-suggestions::-webkit-scrollbar-thumb {
+  background-color: var(--cr-red);
+  border-radius: 4px;
+}
+
+.p5-upload-form::-webkit-scrollbar-thumb:hover,
+.cr-anilist-reviews-list::-webkit-scrollbar-thumb:hover,
+.p5-parent-suggestions::-webkit-scrollbar-thumb:hover {
+  background-color: var(--cr-red-hover);
 }

@@ -2,20 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import '../pages/Home.css';
 
-const NAV_ITEMS = [
-  { label: 'HOME', path: '/', icon: '✦' },
-  { label: 'RESOURCES', path: '/resources', icon: '📁' },
-  { label: 'COURSE REVIEWS', path: '/course-reviews', icon: '📝' },
-  { label: 'TEACHER REVIEWS', path: '/teacher-reviews', icon: '🎓' },
-  { label: 'TOP CONTRIBUTORS', path: '/top-contributors', icon: '👑' }
-];
-
 const BREADCRUMBS = {
   '/': 'SYSTEM // DASHBOARD',
   '/resources': 'SYSTEM // ACADEMIC_RESOURCES',
   '/course-reviews': 'SYSTEM // COURSE_REVIEWS',
-  '/teacher-reviews': 'SYSTEM // TEACHER_REVIEWS',
-  '/top-contributors': 'SYSTEM // TOP_CONTRIBUTORS'
+  '/top-contributors': 'SYSTEM // TOP_CONTRIBUTORS',
+  '/performance': 'SYSTEM // PERFORMANCE',
+  '/reports': 'SYSTEM // REPORTS'
 };
 
 export default function Layout() {
@@ -46,6 +39,18 @@ export default function Layout() {
     navigate('/login');
   };
 
+  // Dynamic Navigation Items
+  const navItems = [
+    { label: 'HOME', path: '/', icon: '✦' },
+    { label: 'RESOURCES', path: '/resources', icon: '📁' },
+    { label: 'COURSE REVIEWS', path: '/course-reviews', icon: '📝' },
+    { label: 'PERFORMANCE', path: '/performance', icon: '⚡' },
+    { label: 'TOP CONTRIBUTORS', path: '/top-contributors', icon: '👑' },
+    ...(user && user.role && user.role.toLowerCase() === 'admin'
+      ? [{ label: 'REPORTS', path: '/reports', icon: '🚩' }]
+      : [])
+  ];
+
   const pageTitle = BREADCRUMBS[location.pathname] || 'SYSTEM // DASHBOARD';
 
   return (
@@ -58,7 +63,7 @@ export default function Layout() {
         </div>
 
         <nav className="p5-nav">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
