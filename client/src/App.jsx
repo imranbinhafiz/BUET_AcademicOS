@@ -6,6 +6,7 @@ import Auth from './pages/Auth.jsx';
 import Resources from './pages/Resources';
 import CourseReviews from './pages/CourseReviews';
 import TopContributors from './pages/TopContributors';
+import Performance from './pages/Performance';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/course-reviews" element={<CourseReviews />} />
+        <Route path="/performance" element={<Performance />} />
         <Route path="/top-contributors" element={<TopContributors />} />
       </Route>
     </Routes>
