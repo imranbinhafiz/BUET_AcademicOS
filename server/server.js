@@ -13,11 +13,15 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Middleware
-app.use(cors());
+app.use(cors({
+     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+     exposedHeaders: ['Content-Disposition']
+}));
 app.use(express.json());
 
 // Serve uploads folder statically for direct file access if needed
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+   // Only expose resources' own public files statically, not the whole uploads/ tree
+   app.use('/uploads/resources', express.static(path.join(__dirname, 'uploads', 'resources')));
 
 // Routes
 const authRoutes = require('./routes/auth');

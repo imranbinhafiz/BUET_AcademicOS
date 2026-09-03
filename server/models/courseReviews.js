@@ -72,12 +72,19 @@ async function getCourses({ search, deptCode, sortBy = 'rating', order = 'desc' 
 
 // Fetch the offerings (teacher/semester pairs) available for a course,
 // used to populate the "Select Teacher" dropdown in the review form.
+// Fetch the offerings (teacher/semester pairs) available for a course,
+// used to populate the "Select Teacher" dropdown in the review form.
 async function getCourseOfferings(courseCode) {
   const result = await db.query(
-    `SELECT offering_id, teacher_name, semester
-     FROM course_offerings
-     WHERE course_code = $1
-     ORDER BY semester DESC, teacher_name ASC`,
+    `SELECT
+       co.offering_id,
+       co.semester,
+       t.teacher_id,
+       t.name AS teacher_name
+     FROM course_offerings co
+     JOIN teachers t ON t.teacher_id = co.teacher_id
+     WHERE co.course_code = $1
+     ORDER BY co.semester DESC, t.name ASC`,
     [courseCode]
   );
   return result.rows;
@@ -94,14 +101,15 @@ async function getCourseReviews(courseCode, currentUserId) {
   const result = await db.query(
     `SELECT
        cr.*,
-       u.name AS user_name,
-       co.teacher_name,
+       u.name AS reviewer_name,   -- <--- CHANGED THIS LINE
+       t.name AS teacher_name,
        co.semester,
        COALESCE((SELECT SUM(value)::int FROM coursereviewvote v WHERE v.review_id = cr.review_id), 0) AS vote_tally,
        (SELECT value FROM coursereviewvote v2 WHERE v2.review_id = cr.review_id AND v2.user_id = $2) AS current_vote
      FROM coursereviews cr
      LEFT JOIN users u ON u.user_id = cr.user_id
      LEFT JOIN course_offerings co ON co.offering_id = cr.offering_id
+     LEFT JOIN teachers t ON t.teacher_id = co.teacher_id
      WHERE cr.course_code = $1
      ORDER BY cr.review_id DESC`,
     [courseCode, currentUserId || null]

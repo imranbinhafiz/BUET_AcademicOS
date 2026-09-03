@@ -320,39 +320,39 @@ export default function Resources() {
 
   return (
     <>
-      <div className="p5-page-header">
+      <div className="res-page-header">
         <h2>RESOURCES ARCHIVE</h2>
-        <button className="p5-action-btn" onClick={() => setShowUploadForm((prev) => !prev)}>
+        <button className="res-action-btn" onClick={() => setShowUploadForm((prev) => !prev)}>
           {showUploadForm ? 'CANCEL' : '+ UPLOAD RESOURCE'}
         </button>
       </div>
 
       <form
         onSubmit={handleUploadSubmit}
-        className={`p5-upload-form${showUploadForm ? '' : ' p5-form-closed'}`}
+        className={`res-upload-form${showUploadForm ? '' : ' res-form-closed'}`}
       >
-        {uploadError && <div className="p5-error">{uploadError}</div>}
+        {uploadError && <div className="res-error">{uploadError}</div>}
 
         <div>
-          <label className="p5-label">Title</label>
+          <label className="res-label">Title</label>
           <input
             type="text"
             name="title"
             required
             value={uploadData.title}
             onChange={handleUploadChange}
-            className="p5-input"
+            className="res-input"
           />
         </div>
 
         <div>
-          <label className="p5-label">Type</label>
+          <label className="res-label">Type</label>
           <select
             name="type"
             required
             value={uploadData.type}
             onChange={handleUploadChange}
-            className="p5-input"
+            className="res-input"
           >
             {RESOURCE_TYPES.map((t) => (
               <option key={t.type} value={t.type}>{t.type}</option>
@@ -361,7 +361,7 @@ export default function Resources() {
         </div>
 
         <div>
-          <label className="p5-label">Course Code</label>
+          <label className="res-label">Course Code</label>
           <input
             type="text"
             name="course_code"
@@ -370,7 +370,7 @@ export default function Resources() {
             placeholder="e.g. CSE204"
             value={uploadData.course_code}
             onChange={handleUploadChange}
-            className="p5-input"
+            className="res-input"
           />
           <datalist id="upload-course-options">
             {courses.map((c) => (
@@ -381,9 +381,9 @@ export default function Resources() {
           </datalist>
         </div>
 
-        <div className="p5-parent-search-wrapper">
-          <label className="p5-label">Previous Version (optional)</label>
-          <div className="p5-parent-input-row">
+        <div className="res-parent-search-wrapper">
+          <label className="res-label">Previous Version (optional)</label>
+          <div className="res-parent-input-row">
             <input
               type="text"
               placeholder="Search by title to link a previous version..."
@@ -394,13 +394,13 @@ export default function Resources() {
                 setShowParentSuggestions(true);
               }}
               onFocus={() => setShowParentSuggestions(true)}
-              className="p5-input"
+              className="res-input"
             />
             {selectedParent && (
               <button
                 type="button"
                 onClick={handleClearParent}
-                className="p5-parent-clear-btn"
+                className="res-parent-clear-btn"
                 aria-label="Clear selected parent resource"
               >
                 ✕
@@ -409,16 +409,16 @@ export default function Resources() {
           </div>
 
           {showParentSuggestions && parentSuggestions.length > 0 && (
-            <ul className="p5-parent-suggestions">
+            <ul className="res-parent-suggestions">
               {parentSuggestions.map((r) => (
                 <li key={r.res_id}>
                   <button
                     type="button"
-                    className="p5-parent-suggestion-item"
+                    className="res-parent-suggestion-item"
                     onClick={() => handleSelectParent(r)}
                   >
-                    <span className="p5-parent-suggestion-title">{r.title}</span>
-                    <span className="p5-parent-suggestion-meta">{r.course_code}</span>
+                    <span className="res-parent-suggestion-title">{r.title}</span>
+                    <span className="res-parent-suggestion-meta">{r.course_code}</span>
                   </button>
                 </li>
               ))}
@@ -426,19 +426,19 @@ export default function Resources() {
           )}
 
           {selectedParent && (
-            <p className="p5-parent-selected-note">
+            <p className="res-parent-selected-note">
               This upload will be linked as a new version of "{selectedParent.title}".
             </p>
           )}
         </div>
 
         <div>
-          <label className="p5-label">File (PDF or ZIP)</label>
-          <div className="p5-file-input-wrapper">
-            <label htmlFor="resource-file" className="p5-file-btn">
+          <label className="res-label">File (PDF or ZIP)</label>
+          <div className="res-file-input-wrapper">
+            <label htmlFor="resource-file" className="res-file-btn">
               Choose File
             </label>
-            <span className="p5-file-name">
+            <span className="res-file-name">
               {file ? file.name : 'No file chosen'}
             </span>
             <input
@@ -447,37 +447,37 @@ export default function Resources() {
               accept=".pdf,.zip"
               required
               onChange={handleFileChange}
-              className="p5-file-input-hidden"
+              className="res-file-input-hidden"
             />
           </div>
         </div>
 
-        <button type="submit" disabled={uploading} className="p5-btn">
+        <button type="submit" disabled={uploading} className="res-btn">
           {uploading ? 'UPLOADING...' : 'SUBMIT'}
         </button>
       </form>
 
-      <div className="p5-type-grid">
+      <div className="res-type-grid">
         {RESOURCE_TYPES.map((t) => (
           <button
             key={t.type}
-            className={`p5-type-card${activeType === t.type ? ' p5-type-active' : ''}`}
+            className={`res-type-card${activeType === t.type ? ' res-type-active' : ''}`}
             onClick={() => handleTypeClick(t.type)}
           >
-            <span className="p5-type-icon">{t.icon}</span>
-            <span className="p5-type-label">{t.type}</span>
+            <span className="res-type-icon">{t.icon}</span>
+            <span className="res-type-label">{t.type}</span>
           </button>
         ))}
       </div>
 
-      <div className="p5-course-search-wrapper">
+      <div className="res-course-search-wrapper">
         <input
           type="text"
           list="course-code-options"
           placeholder="🔍 Search by course code (e.g. CSE204)..."
           value={courseSearch}
           onChange={(e) => setCourseSearch(e.target.value)}
-          className="p5-input p5-course-search-input"
+          className="res-input res-course-search-input"
         />
         <datalist id="course-code-options">
           {availableCourseCodes.map((code) => (
@@ -488,7 +488,7 @@ export default function Resources() {
           <button
             type="button"
             onClick={() => setCourseSearch('')}
-            className="p5-parent-clear-btn"
+            className="res-parent-clear-btn"
             aria-label="Clear course search"
           >
             ✕
@@ -496,11 +496,11 @@ export default function Resources() {
         )}
       </div>
 
-      <div className="p5-sort-bar">
+      <div className="res-sort-bar">
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="p5-input p5-sort-select"
+          className="res-input res-sort-select"
         >
           <option value="default">Sort: Newest</option>
           <option value="votes">Sort: Votes</option>
@@ -508,32 +508,32 @@ export default function Resources() {
         </select>
         <button
           type="button"
-          className="p5-order-btn"
+          className="res-order-btn"
           onClick={() => setOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
         >
           {order === 'asc' ? '↑ ASCENDING' : '↓ DESCENDING'}
         </button>
       </div>
 
-      {loading && <p className="p5-empty-state">Loading resources...</p>}
-      {error && <p className="p5-error">{error}</p>}
+      {loading && <p className="res-empty-state">Loading resources...</p>}
+      {error && <p className="res-error">{error}</p>}
 
       {!loading && !error && (
-        <div className="p5-resource-list">
+        <div className="res-resource-list">
           {resources.map((res) => (
-            <div key={res.res_id} className="p5-resource-card-wrapper">
-              <div className="p5-resource-card">
-                <div className="p5-vote-column">
+            <div key={res.res_id} className="res-resource-card-wrapper">
+              <div className="res-resource-card">
+                <div className="res-vote-column">
                   <button
-                    className={`p5-vote-btn${res.current_vote === 1 ? ' p5-vote-active-up' : ''}`}
+                    className={`res-vote-btn${res.current_vote === 1 ? ' res-vote-active-up' : ''}`}
                     onClick={() => handleVote(res.res_id, 1)}
                     aria-label="Upvote"
                   >
                     ▲
                   </button>
-                  <span className="p5-vote-tally">{res.vote_tally}</span>
+                  <span className="res-vote-tally">{res.vote_tally}</span>
                   <button
-                    className={`p5-vote-btn${res.current_vote === -1 ? ' p5-vote-active-down' : ''}`}
+                    className={`res-vote-btn${res.current_vote === -1 ? ' res-vote-active-down' : ''}`}
                     onClick={() => handleVote(res.res_id, -1)}
                     aria-label="Downvote"
                   >
@@ -541,45 +541,45 @@ export default function Resources() {
                   </button>
                 </div>
 
-                <div className="p5-resource-badge">{getFileExtension(res.file_path)}</div>
-                <div className="p5-resource-details">
+                <div className="res-resource-badge">{getFileExtension(res.file_path)}</div>
+                <div className="res-resource-details">
                   <h4>{res.title}</h4>
                   <p>
                     Course: <strong>{res.course_code}</strong>
                     {' | '}Uploaded by: <strong>{res.uploader_name || 'Unknown'}</strong>
                   </p>
                 </div>
-                <div className="p5-resource-meta">
+                <div className="res-resource-meta">
                   <span>📥 {res.download_count}</span>
                   {res.parent_res_id && (
                     <button
-                      className="p5-versions-btn"
+                      className="res-versions-btn"
                       onClick={() => toggleVersions(res.res_id)}
                     >
                       🕘 {expandedVersionsFor === res.res_id ? 'HIDE VERSIONS' : 'PREVIOUS VERSIONS'}
                     </button>
                   )}
-                  <button className="p5-card-btn" onClick={() => handleDownload(res.res_id, res.title)}>
+                  <button className="res-card-btn" onClick={() => handleDownload(res.res_id, res.title)}>
                     DOWNLOAD
                   </button>
                 </div>
               </div>
 
               {expandedVersionsFor === res.res_id && (
-                <div className="p5-version-history">
+                <div className="res-version-history">
                   {loadingVersions && !versionHistory[res.res_id] && (
-                    <p className="p5-empty-state">Loading versions...</p>
+                    <p className="res-empty-state">Loading versions...</p>
                   )}
                   {versionHistory[res.res_id] && versionHistory[res.res_id].length === 0 && (
-                    <p className="p5-empty-state">No previous versions found.</p>
+                    <p className="res-empty-state">No previous versions found.</p>
                   )}
                   {versionHistory[res.res_id] &&
                     versionHistory[res.res_id].map((v) => (
-                      <div key={v.res_id} className="p5-version-item">
-                        <span className="p5-version-tag">v{v.version}</span>
-                        <span className="p5-version-title">{v.title}</span>
+                      <div key={v.res_id} className="res-version-item">
+                        <span className="res-version-tag">v{v.version}</span>
+                        <span className="res-version-title">{v.title}</span>
                         <button
-                          className="p5-card-btn"
+                          className="res-card-btn"
                           onClick={() => handleDownload(v.res_id, v.title)}
                         >
                           DOWNLOAD
@@ -592,7 +592,7 @@ export default function Resources() {
           ))}
 
           {resources.length === 0 && (
-            <p className="p5-empty-state">
+            <p className="res-empty-state">
               No resources found{activeType ? ` for "${activeType}"` : ''}
               {courseSearch ? ` matching "${courseSearch}"` : ''}.
             </p>
