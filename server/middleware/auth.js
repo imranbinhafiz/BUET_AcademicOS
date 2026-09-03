@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const db = require('../db');
 
 // Verifies the JWT sent in the Authorization header and attaches the
 // decoded payload (user_id, role) to req.user for use in protected routes.
@@ -42,6 +43,65 @@ function requireRole(...allowedRoles) {
   };
 }
 
+async function findActiveUser(userId) {
+  const result = await db.query(
+    `SELECT user_id, name, batch, dept_code, role
+     FROM users
+     WHERE user_id = $1
+       AND deleted_at IS NULL`,
+    [userId]
+  );
+
+  return result.rows[0] || null;
+}
+
+// JWTs intentionally last several days. For operations that need a current
+// account or current role, do not trust the role embedded at login; confirm it
+// against the database first. The active record is then available as
+// req.activeUser for the route.
+function requireActiveUser(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'No token provided' });
+  }
+
+  return findActiveUser(req.user.user_id)
+    .then((activeUser) => {
+      if (!activeUser) {
+        return res.status(403).json({ code: 'ACCOUNT_INACTIVE', message: 'This account is no longer active.' });
+      }
+      req.activeUser = activeUser;
+      return next();
+    })
+    .catch((err) => {
+      console.error('Error checking active user:', err);
+      return res.status(500).json({ code: 'SERVER_ERROR', message: 'Could not verify account status.' });
+    });
+}
+
+function requireActiveRole(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    return findActiveUser(req.user.user_id)
+      .then((activeUser) => {
+        if (!activeUser) {
+          return res.status(403).json({ code: 'ACCOUNT_INACTIVE', message: 'This account is no longer active.' });
+        }
+        if (!allowedRoles.includes(activeUser.role)) {
+          return res.status(403).json({ code: 'INSUFFICIENT_PERMISSIONS', message: 'Insufficient permissions.' });
+        }
+        req.activeUser = activeUser;
+        return next();
+      })
+      .catch((err) => {
+        console.error('Error checking active role:', err);
+        return res.status(500).json({ code: 'SERVER_ERROR', message: 'Could not verify account status.' });
+      });
+  };
+}
+
 // Like verifyToken, but never rejects the request — used on public routes
 // (like browsing resources) where we still want to know who's logged in
 // if anyone, e.g. to show their own vote as highlighted. Anonymous
@@ -62,4 +122,10 @@ function optionalAuth(req, res, next) {
   next();
 }
 
-module.exports = { verifyToken, optionalAuth, requireRole };
+module.exports = {
+  verifyToken,
+  optionalAuth,
+  requireRole,
+  requireActiveUser,
+  requireActiveRole
+};
