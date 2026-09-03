@@ -1,4 +1,10 @@
 -- PostgreSQL Schema for BUET Academicos
+--
+-- Fresh-install note: this is the structural baseline through the historical
+-- 001/002 updates. To obtain the current term-wise CSE performance design,
+-- run fresh_install_core_departments.sql and then
+-- 003_add_cse_curriculum_performance.sql. Do not run 001/002 after this file
+-- because their changes are already represented here.
 -- Fixed version addressing:
 --   (1) Missing User-Course performance/GPA data      -> user_course_performance
 --   (2) Topic flagging (now scoped to course reviews) -> coursereview_topic_flag
