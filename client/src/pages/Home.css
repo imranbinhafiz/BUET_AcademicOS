@@ -152,6 +152,8 @@
   background-color: #1c1c21;
   padding: 0.4rem 0.65rem;
   border: 1px solid var(--p5-border);
+  color: var(--p5-text-main);
+  font: inherit;
   transition: background 0.2s;
 }
 

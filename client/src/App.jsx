@@ -7,6 +7,8 @@ import Resources from './pages/Resources';
 import CourseReviews from './pages/CourseReviews';
 import TopContributors from './pages/TopContributors';
 import Performance from './pages/Performance';
+import Notifications from './pages/Notifications';
+import AdminBatchProgress from './pages/AdminBatchProgress';
 
 export default function App() {
   return (
@@ -20,6 +22,8 @@ export default function App() {
         <Route path="/course-reviews" element={<CourseReviews />} />
         <Route path="/performance" element={<Performance />} />
         <Route path="/top-contributors" element={<TopContributors />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/admin/batch-progress" element={<AdminBatchProgress />} />
       </Route>
     </Routes>
   );

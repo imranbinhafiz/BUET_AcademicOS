@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import '../pages/Home.css';
 
@@ -8,14 +8,36 @@ const BREADCRUMBS = {
   '/course-reviews': 'SYSTEM // COURSE_REVIEWS',
   '/top-contributors': 'SYSTEM // TOP_CONTRIBUTORS',
   '/performance': 'SYSTEM // PERFORMANCE',
-  '/reports': 'SYSTEM // REPORTS'
+  '/notifications': 'SYSTEM // NOTIFICATIONS',
+  '/admin/batch-progress': 'SYSTEM // BATCH_CONTROL'
 };
 
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState(null);
-  const [unreadNotifications] = useState(3);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  const refreshUnreadCount = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setUnreadNotifications(0);
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/api/notifications/unread-count', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Could not load notification count.');
+      const data = await response.json();
+      setUnreadNotifications(Number(data.unread_count) || 0);
+    } catch (err) {
+      // A stale token or an offline server must not leave the old fake badge
+      // visible. The notifications page will show a useful error if opened.
+      setUnreadNotifications(0);
+    }
+  }, []);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -24,18 +46,27 @@ export default function Layout() {
     if (storedUser && token) {
       try {
         setUser(JSON.parse(storedUser));
+        refreshUnreadCount();
       } catch (e) {
         setUser(null);
+        setUnreadNotifications(0);
       }
     } else {
       setUser(null);
+      setUnreadNotifications(0);
     }
-  }, []);
+  }, [refreshUnreadCount]);
+
+  useEffect(() => {
+    window.addEventListener('notifications-changed', refreshUnreadCount);
+    return () => window.removeEventListener('notifications-changed', refreshUnreadCount);
+  }, [refreshUnreadCount]);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     setUser(null);
+    setUnreadNotifications(0);
     navigate('/login');
   };
 
@@ -47,7 +78,7 @@ export default function Layout() {
     { label: 'PERFORMANCE', path: '/performance', icon: '⚡' },
     { label: 'TOP CONTRIBUTORS', path: '/top-contributors', icon: '👑' },
     ...(user && user.role && user.role.toLowerCase() === 'admin'
-      ? [{ label: 'REPORTS', path: '/reports', icon: '🚩' }]
+      ? [{ label: 'BATCH CONTROL', path: '/admin/batch-progress', icon: '⚙' }]
       : [])
   ];
 
@@ -101,12 +132,18 @@ export default function Layout() {
           <div className="p5-topbar-right">
             {user ? (
               <>
-                <div className="p5-notification-box" title="Notifications">
+                <button
+                  type="button"
+                  className="p5-notification-box"
+                  title="Notifications"
+                  aria-label={`Notifications${unreadNotifications ? `, ${unreadNotifications} unread` : ''}`}
+                  onClick={() => navigate('/notifications')}
+                >
                   <span className="p5-notification-icon">🔔</span>
                   {unreadNotifications > 0 && (
                     <span className="p5-notification-badge">{unreadNotifications}</span>
                   )}
-                </div>
+                </button>
 
                 <div 
                   className="p5-profile-widget" 
@@ -135,7 +172,7 @@ export default function Layout() {
         </header>
 
         <main className="p5-content">
-          <Outlet context={{ user }} />
+          <Outlet context={{ user, unreadNotifications, refreshUnreadCount }} />
         </main>
       </div>
     </div>
