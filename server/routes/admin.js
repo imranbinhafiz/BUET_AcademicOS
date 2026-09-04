@@ -4,7 +4,10 @@ const { verifyToken, requireActiveRole } = require('../middleware/auth');
 const {
   listBatchProgress,
   getBatchProgressHistory,
-  advanceBatchProgress
+  advanceBatchProgress,
+  listModerationQueue,
+  resolveReport,
+  moderateResource
 } = require('../models/admin');
 
 const router = express.Router();
@@ -15,6 +18,14 @@ const advanceBodySchema = Joi.object({
   expected_current_term_code: Joi.string().pattern(/^[1-4]-[1-2]$/).required(),
   reason: Joi.string().trim().min(3).max(500).required(),
   request_id: Joi.string().guid({ version: ['uuidv4'] }).required()
+}).unknown(false);
+const reportResolutionSchema = Joi.object({
+  status: Joi.string().valid('reviewed', 'dismissed').required(),
+  resolution_note: Joi.string().trim().max(500).allow('').optional()
+}).unknown(false);
+const resourceModerationSchema = Joi.object({
+  approval_status: Joi.string().valid('approved', 'rejected').required(),
+  moderation_note: Joi.string().trim().max(500).allow('').optional()
 }).unknown(false);
 
 const conflictResponses = {
@@ -148,6 +159,59 @@ router.post('/batch-progress/:batchYear/:deptCode/advance', async (req, res) => 
     });
   } catch (err) {
     return databaseError(res, err, 'Could not advance batch progress.');
+  }
+});
+
+// GET /api/admin/moderation/queue
+router.get('/moderation/queue', async (req, res) => {
+  try {
+    return res.json(await listModerationQueue());
+  } catch (err) {
+    return databaseError(res, err, 'Could not load the moderation queue.');
+  }
+});
+
+// PATCH /api/admin/reports/123
+router.patch('/reports/:reportId', async (req, res) => {
+  const idValidation = Joi.number().integer().positive().validate(req.params.reportId);
+  const bodyValidation = reportResolutionSchema.validate(req.body);
+  if (idValidation.error || bodyValidation.error) {
+    return validationError(res, idValidation.error || bodyValidation.error);
+  }
+
+  try {
+    const report = await resolveReport({
+      reportId: idValidation.value,
+      status: bodyValidation.value.status,
+      resolutionNote: bodyValidation.value.resolution_note,
+      actorUserId: req.activeUser.user_id
+    });
+    if (!report) return res.status(409).json({ code: 'REPORT_NOT_PENDING', message: 'This report has already been resolved.' });
+    return res.json({ report });
+  } catch (err) {
+    return databaseError(res, err, 'Could not resolve the report.');
+  }
+});
+
+// PATCH /api/admin/resources/123/moderation
+router.patch('/resources/:resourceId/moderation', async (req, res) => {
+  const idValidation = Joi.number().integer().positive().validate(req.params.resourceId);
+  const bodyValidation = resourceModerationSchema.validate(req.body);
+  if (idValidation.error || bodyValidation.error) {
+    return validationError(res, idValidation.error || bodyValidation.error);
+  }
+
+  try {
+    const resource = await moderateResource({
+      resourceId: idValidation.value,
+      approvalStatus: bodyValidation.value.approval_status,
+      moderationNote: bodyValidation.value.moderation_note,
+      actorUserId: req.activeUser.user_id
+    });
+    if (!resource) return res.status(409).json({ code: 'RESOURCE_NOT_PENDING', message: 'This resource is no longer waiting for review.' });
+    return res.json({ resource });
+  } catch (err) {
+    return databaseError(res, err, 'Could not moderate the resource.');
   }
 });
 

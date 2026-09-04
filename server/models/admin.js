@@ -160,8 +160,70 @@ async function advanceBatchProgress({
   }
 }
 
+async function listModerationQueue() {
+  const [reports, resources] = await Promise.all([
+    db.query(
+      `SELECT
+         r.report_id, r.target_type, r.target_id, r.reason, r.created_at,
+         reporter.name AS reporter_name,
+         COALESCE(cr.comment, resource.title, '[Removed content]') AS target_preview,
+         COALESCE(cr.course_code, resource.course_code) AS course_code
+       FROM reports r
+       JOIN users reporter ON reporter.user_id = r.reporter_user_id
+       LEFT JOIN coursereview cr ON r.target_type = 'coursereview' AND cr.review_id = r.target_id
+       LEFT JOIN resources resource ON r.target_type = 'resource' AND resource.res_id = r.target_id
+       WHERE r.status = 'pending'
+       ORDER BY r.report_id DESC
+       LIMIT 50`
+    ),
+    db.query(
+      `SELECT
+         resource.res_id, resource.title, resource.type, resource.course_code,
+         resource.created_at, resource.approval_status, uploader.name AS uploader_name
+       FROM resources resource
+       JOIN users uploader ON uploader.user_id = resource.user_id
+       WHERE resource.approval_status = 'pending'
+       ORDER BY resource.res_id DESC
+       LIMIT 50`
+    )
+  ]);
+
+  return { reports: reports.rows, resources: resources.rows };
+}
+
+async function resolveReport({ reportId, status, resolutionNote, actorUserId }) {
+  const result = await db.query(
+    `UPDATE reports
+     SET status = $2,
+         resolution_note = $3,
+         reviewed_by_user_id = $4,
+         reviewed_at = CURRENT_TIMESTAMP
+     WHERE report_id = $1 AND status = 'pending'
+     RETURNING report_id, status, resolution_note, reviewed_at`,
+    [reportId, status, resolutionNote || null, actorUserId]
+  );
+  return result.rows[0] || null;
+}
+
+async function moderateResource({ resourceId, approvalStatus, moderationNote, actorUserId }) {
+  const result = await db.query(
+    `UPDATE resources
+     SET approval_status = $2,
+         moderation_note = $3,
+         moderated_by_user_id = $4,
+         moderated_at = CURRENT_TIMESTAMP
+     WHERE res_id = $1 AND approval_status = 'pending'
+     RETURNING res_id, approval_status, moderation_note, moderated_at`,
+    [resourceId, approvalStatus, moderationNote || null, actorUserId]
+  );
+  return result.rows[0] || null;
+}
+
 module.exports = {
   listBatchProgress,
   getBatchProgressHistory,
-  advanceBatchProgress
+  advanceBatchProgress,
+  listModerationQueue,
+  resolveReport,
+  moderateResource
 };

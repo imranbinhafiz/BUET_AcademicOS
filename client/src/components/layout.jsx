@@ -9,7 +9,8 @@ const BREADCRUMBS = {
   '/top-contributors': 'SYSTEM // TOP_CONTRIBUTORS',
   '/performance': 'SYSTEM // PERFORMANCE',
   '/notifications': 'SYSTEM // NOTIFICATIONS',
-  '/admin/batch-progress': 'SYSTEM // BATCH_CONTROL'
+  '/admin/batch-progress': 'SYSTEM // BATCH_CONTROL',
+  '/admin/moderation': 'SYSTEM // MODERATION'
 };
 
 export default function Layout() {
@@ -62,6 +63,21 @@ export default function Layout() {
     return () => window.removeEventListener('notifications-changed', refreshUnreadCount);
   }, [refreshUnreadCount]);
 
+  useEffect(() => {
+    if (!user) return undefined;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') refreshUnreadCount();
+    };
+    const intervalId = window.setInterval(refreshUnreadCount, 20000);
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [refreshUnreadCount, user]);
+
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
@@ -78,7 +94,10 @@ export default function Layout() {
     { label: 'PERFORMANCE', path: '/performance', icon: '⚡' },
     { label: 'TOP CONTRIBUTORS', path: '/top-contributors', icon: '👑' },
     ...(user && user.role && user.role.toLowerCase() === 'admin'
-      ? [{ label: 'BATCH CONTROL', path: '/admin/batch-progress', icon: '⚙' }]
+      ? [
+        { label: 'BATCH CONTROL', path: '/admin/batch-progress', icon: '⚙' },
+        { label: 'MODERATION', path: '/admin/moderation', icon: '🛡' }
+      ]
       : [])
   ];
 

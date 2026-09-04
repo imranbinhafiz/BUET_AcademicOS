@@ -18,7 +18,19 @@ function formatDate(value) {
 
 function notificationLabel(type) {
   if (type === 'batch_progress_advanced') return 'TERM PROGRESS';
+  if (type === 'review_vote') return 'REVIEW ACTIVITY';
+  if (type === 'report_created' || type === 'report_resolved') return 'MODERATION UPDATE';
+  if (type === 'resource_submitted') return 'RESOURCE REVIEW';
+  if (type === 'resource_approved' || type === 'resource_rejected') return 'RESOURCE STATUS';
   return 'SYSTEM UPDATE';
+}
+
+function notificationDestination(type) {
+  if (type === 'batch_progress_advanced') return '/performance';
+  if (type === 'review_vote' || type === 'report_created' || type === 'report_resolved') return '/course-reviews';
+  if (type === 'resource_submitted') return '/admin/moderation';
+  if (type === 'resource_approved' || type === 'resource_rejected') return '/resources';
+  return null;
 }
 
 export default function Notifications() {
@@ -83,9 +95,8 @@ export default function Notifications() {
     setError('');
     try {
       await markOneRead(notification);
-      if (notification.type === 'batch_progress_advanced') {
-        navigate('/performance');
-      }
+      const destination = notificationDestination(notification.type);
+      if (destination) navigate(destination);
     } catch (err) {
       setError(err.message);
     }
@@ -143,7 +154,7 @@ export default function Notifications() {
                 <strong>{notification.message}</strong>
                 <time>{formatDate(notification.created_at)}</time>
               </span>
-              {notification.type === 'batch_progress_advanced' && <span className="notification-link-hint">VIEW PERFORMANCE →</span>}
+              {notificationDestination(notification.type) && <span className="notification-link-hint">VIEW DETAILS →</span>}
             </button>
           ))}
         </div>

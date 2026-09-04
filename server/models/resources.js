@@ -18,22 +18,23 @@ async function getResources({ type, courseCode, currentUserId, sortBy = 'default
   const conditions = [];
   const values = [];
 
+  // Pending/rejected uploads are private to their uploader until an admin
+  // approves them. Existing public resources were migrated as approved.
+  values.push(currentUserId || null);
+  const currentUserParam = `$${values.length}`;
+  conditions.push(`(r.approval_status = 'approved' OR r.user_id = ${currentUserParam})`);
+
   if (type) {
     values.push(type);
-    conditions.push(`type = $${values.length}`); // becomes $1
+    conditions.push(`r.type = $${values.length}`);
   }
 
   if (courseCode) {
     values.push(`%${courseCode}%`);
-    conditions.push(`course_code ILIKE $${values.length}`); // partial, case-insensitive match
+    conditions.push(`r.course_code ILIKE $${values.length}`);
   }
 
   const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  // Appended last regardless of which filters are active, so its
-  // placeholder number is only known once the filter values are in.
-  values.push(currentUserId || null);
-  const currentUserParam = `$${values.length}`;
 
   const sortColumn = SORT_COLUMNS[sortBy] || SORT_COLUMNS.default;
   const sortDirection = order === 'asc' ? 'ASC' : 'DESC';

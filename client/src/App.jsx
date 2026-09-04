@@ -9,6 +9,7 @@ import TopContributors from './pages/TopContributors';
 import Performance from './pages/Performance';
 import Notifications from './pages/Notifications';
 import AdminBatchProgress from './pages/AdminBatchProgress';
+import AdminModeration from './pages/AdminModeration';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/top-contributors" element={<TopContributors />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/admin/batch-progress" element={<AdminBatchProgress />} />
+        <Route path="/admin/moderation" element={<AdminModeration />} />
       </Route>
     </Routes>
   );

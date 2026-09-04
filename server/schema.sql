@@ -5,7 +5,8 @@
 -- run fresh_install_core_departments.sql and then
 -- 003_add_cse_curriculum_performance.sql and
 -- 004_add_admin_batch_progress.sql and
--- 005_finish_course_review_support.sql. Do not run 001/002 after this file
+-- 005_finish_course_review_support.sql and
+-- 006_add_activity_notifications.sql. Do not run 001/002 after this file
 -- because their changes are already represented here.
 -- Fixed version addressing:
 --   (1) Missing User-Course performance/GPA data      -> user_course_performance
