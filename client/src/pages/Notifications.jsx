@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import './Notifications.css';
 
@@ -37,7 +37,9 @@ export default function Notifications() {
   const navigate = useNavigate();
   const { user, refreshUnreadCount } = useOutletContext();
   const token = localStorage.getItem('token');
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  // Keep this object stable. Otherwise it changes on every render, which
+  // changes loadNotifications and continuously restarts the loading effect.
+  const headers = useMemo(() => (token ? { Authorization: `Bearer ${token}` } : {}), [token]);
   const [notifications, setNotifications] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
   const [loading, setLoading] = useState(true);
