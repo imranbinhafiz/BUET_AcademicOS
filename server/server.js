@@ -17,6 +17,11 @@ if (!fs.existsSync(courseReviewUploadDir)) {
   fs.mkdirSync(courseReviewUploadDir, { recursive: true });
 }
 
+const avatarUploadDir = path.join(__dirname, 'uploads', 'avatars');
+if (!fs.existsSync(avatarUploadDir)) {
+  fs.mkdirSync(avatarUploadDir, { recursive: true });
+}
+
 // Middleware
 app.use(cors({
      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -27,6 +32,7 @@ app.use(express.json());
 // Serve uploads folder statically for direct file access if needed
    // Only expose resources' own public files statically, not the whole uploads/ tree
    app.use('/uploads/resources', express.static(path.join(__dirname, 'uploads', 'resources')));
+app.use('/uploads/avatars', express.static(avatarUploadDir));
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -35,6 +41,7 @@ const courseReviewsRoutes = require('./routes/courseReviews');
 const performanceRoutes = require('./routes/performance');
 const adminRoutes = require('./routes/admin');
 const notificationRoutes = require('./routes/notifications');
+const profileRoutes = require('./routes/profile');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/resources', resourceRoutes);
@@ -42,6 +49,7 @@ app.use('/api/course-reviews', courseReviewsRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/profile', profileRoutes);
 
 // Root route
 app.get('/', (req, res) => {

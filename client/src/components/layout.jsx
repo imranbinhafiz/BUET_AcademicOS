@@ -10,7 +10,8 @@ const BREADCRUMBS = {
   '/performance': 'SYSTEM // PERFORMANCE',
   '/notifications': 'SYSTEM // NOTIFICATIONS',
   '/admin/batch-progress': 'SYSTEM // BATCH_CONTROL',
-  '/admin/moderation': 'SYSTEM // MODERATION'
+  '/admin/moderation': 'SYSTEM // MODERATION',
+  '/profile': 'SYSTEM // MY_PROFILE'
 };
 
 export default function Layout() {
@@ -62,6 +63,15 @@ export default function Layout() {
     window.addEventListener('notifications-changed', refreshUnreadCount);
     return () => window.removeEventListener('notifications-changed', refreshUnreadCount);
   }, [refreshUnreadCount]);
+
+  useEffect(() => {
+    const refreshUser = () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) setUser(JSON.parse(storedUser));
+    };
+    window.addEventListener('profile-changed', refreshUser);
+    return () => window.removeEventListener('profile-changed', refreshUser);
+  }, []);
 
   useEffect(() => {
     if (!user) return undefined;
@@ -171,7 +181,7 @@ export default function Layout() {
                 >
                   <div className="p5-avatar-frame">
                     <img
-                      src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=b91522&color=fff&bold=true`}
+                      src={user.avatar_path ? `http://localhost:5000${user.avatar_path}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=b91522&color=fff&bold=true`}
                       alt="User Avatar"
                       className="p5-avatar-img"
                     />

@@ -10,6 +10,7 @@ import Performance from './pages/Performance';
 import Notifications from './pages/Notifications';
 import AdminBatchProgress from './pages/AdminBatchProgress';
 import AdminModeration from './pages/AdminModeration';
+import Profile from './pages/Profile';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/admin/batch-progress" element={<AdminBatchProgress />} />
         <Route path="/admin/moderation" element={<AdminModeration />} />
+        <Route path="/profile" element={<Profile />} />
       </Route>
     </Routes>
   );
