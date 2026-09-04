@@ -1,0 +1,24 @@
+.moderation-page { max-width: 1180px; margin: 0 auto; padding-bottom: 2.5rem; }
+.moderation-header h2, .moderation-access-card h2, .moderation-section h3, .moderation-item h4 { color: #fff; margin: 0; }
+.moderation-header > div > p, .moderation-section-head > p, .moderation-access-card > p { color: var(--p5-red); font-family: var(--font-p5); font-size: .73rem; font-weight: 800; letter-spacing: .13em; margin: 0 0 .3rem; }
+.moderation-header span { color: var(--p5-text-muted); display: block; margin-top: .5rem; }
+.moderation-access-card, .moderation-section, .moderation-summary, .moderation-message, .moderation-loading { background: var(--p5-card-bg); border: 1px solid var(--p5-border); margin-bottom: 1rem; padding: 1.1rem; }
+.moderation-summary { display: flex; gap: 1rem; padding-block: .8rem; }
+.moderation-summary span { color: var(--p5-text-muted); font-size: .86rem; }
+.moderation-summary b { color: #fff; font-family: var(--font-p5); font-size: 1.1rem; }
+.moderation-section { padding: 0; overflow: hidden; }
+.moderation-section-head { border-bottom: 1px solid var(--p5-border); padding: 1rem 1.1rem; }
+.moderation-item { align-items: center; border-bottom: 1px solid var(--p5-border); display: flex; gap: 1rem; justify-content: space-between; padding: 1rem 1.1rem; }
+.moderation-item:last-child { border-bottom: 0; }
+.moderation-item h4 { font-size: 1rem; margin: .2rem 0; max-width: 720px; }
+.moderation-item p { color: var(--p5-text-muted); font-size: .84rem; margin: 0; }
+.moderation-type { color: var(--p5-red); font-family: var(--font-p5); font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.moderation-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
+.moderation-actions button { background: transparent; border: 1px solid var(--p5-border); color: var(--p5-text-muted); cursor: pointer; font-family: var(--font-p5); font-size: .72rem; font-weight: 800; letter-spacing: .06em; padding: .55rem .65rem; }
+.moderation-actions button.primary { background: var(--p5-red); border-color: var(--p5-red); color: #fff; }
+.moderation-actions button:disabled { cursor: not-allowed; opacity: .55; }
+.moderation-empty { color: var(--p5-text-muted); padding: 1rem 1.1rem; }
+.moderation-message.error { border-color: #b85450; color: #ffaaa4; }
+.moderation-message.success { border-color: #5b9d63; color: #aee6b5; }
+.moderation-loading { color: var(--p5-text-muted); }
+@media (max-width: 700px) { .moderation-item { align-items: start; flex-direction: column; } .moderation-actions { width: 100%; } }
