@@ -16,12 +16,8 @@ const {
   deleteReview,
   upsertReviewVote,
   getReviewVoteTally,
-  deleteReviewVote,
   createReport
 } = require('../models/courseReviews');
-const { off } = require('cluster');
-const { upsertVote } = require('../models/resources');
-const { diff } = require('util');
 
 // ---------------------------------------------------------------------
 // Multer setup (for the optional 'attachment' file on a review)
@@ -54,14 +50,14 @@ const ORDER_OPTIONS = ['asc', 'desc'];
 const reviewSchema = Joi.object({
   course_code: Joi.string().max(20).trim().required(),
   offering_id: Joi.number().integer().positive().optional().allow(null, ''),
-  difficulty: Joi.number().integer().min(1).max(5).required(),
-  prereq_use: Joi.number().integer().min(1).max(5).required(),
+  difficulty: Joi.number().min(1).max(5).required(),
+  prereq_use: Joi.number().min(1).max(5).required(),
   comment: Joi.string().min(3).required()
 });
 
 const reviewUpdateSchema = Joi.object({
-  difficulty: Joi.number().integer().min(1).max(5),
-  prereq_use: Joi.number().integer().min(1).max(5),
+  difficulty: Joi.number().min(1).max(5),
+  prereq_use: Joi.number().min(1).max(5),
   comment: Joi.string().min(3)
 }).min(1);
 
@@ -79,6 +75,14 @@ const reportSchema = Joi.object({
 // Returns list of all departments (dept_code, dept_name) for the filter dropdown
 router.get('/departments', async (req, res) => {
   // TODO: implement
+  try{
+    const depts = await getDepartments()
+    res.json(depts);
+  }
+  catch(err){
+    console.error('Error fetching departments:', err);
+    return res.status(500).json({ message: 'Server error while fetching departmnents.' });
+  }
 });
 
 // ==========================================================================
@@ -97,7 +101,7 @@ router.get('/courses', async (req, res) => {
       message: `Invalid sortBy. Must be one of: ${SORT_OPTIONS.join(', ')}`
     });
   }
- 
+
   if (order && !ORDER_OPTIONS.includes(order)) {
     return res.status(400).json({
       message: `Invalid order. Must be one of: ${ORDER_OPTIONS.join(', ')}`
@@ -160,9 +164,77 @@ router.get('/courses/:courseCode/reviews', optionalAuth, async (req, res) => {
 //   course_code (required), offering_id (optional), difficulty (1-5),
 //   prereq_use (1-5), comment (required), attachment (optional file)
 // Creates a new review tied to the authenticated user
-router.post('/reviews', verifyToken, upload.single('attachment'), async (req, res) => {
-  // TODO: implement
+router.post(
+  '/reviews',
+  verifyToken,
+  // Wrapping multer like this catches its errors (bad file type, over the
+  // size limit, etc.) and turns them into clean JSON instead of Express's
+  // default HTML error page — multer's own errors happen before your
+  // route handler's try/catch would ever run.
+  (req, res, next) => {
+    upload.single('attachment')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ message: err.message });
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    try {
+      const { error, value } = reviewSchema.validate(req.body);
+      if (error) {
+        if (req.file) {
+          await fs.unlink(req.file.path).catch(() => {});
+        }
+        return res.status(400).json({ message: error.details[0].message });
+      }
 
+      const { course_code, offering_id, difficulty, prereq_use, comment } = value;
+
+      const filePath = req.file ? req.file.path.replace(/\\/g, '/') : null;
+
+      const createdReview = await createReview({
+        courseCode: course_code,
+        offeringId: offering_id || null,
+        userId: req.user.user_id,
+        difficulty,
+        prereqUse: prereq_use,
+        comment,
+        filePath
+      });
+
+      return res.status(201).json(createdReview);
+    } catch (err) {
+      // Clean up the uploaded file if the database insert failed, so we
+      // don't leave orphaned files with no matching DB row.
+      if (req.file) {
+        await fs.unlink(req.file.path).catch(() => {});
+      }
+      console.error('Error creating review:', err);
+      return res.status(500).json({ message: 'Server error while creating review' });
+    }
+  }
+);
+
+
+router.post('/reviews/:id/download', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const review = await getReviewById(id);
+
+    if (!review || !review.file_path) {
+      return res.status(404).json({ message: 'Review or attachment not found' });
+    }
+
+    const absolutePath = path.resolve(review.file_path);
+
+    // Gives the downloaded file a clean name using the course code and extension
+    const downloadName = `${review.course_code}-review-attachment${path.extname(review.file_path)}`;
+    return res.download(absolutePath, downloadName);
+  } catch (err) {
+    console.error('Error while downloading review attachment', err);
+    res.status(500).json({ message: 'Server error while downloading file' });
+  }
 });
 
 // PUT /api/reviews/:reviewId
@@ -230,7 +302,11 @@ router.delete('/reviews/:reviewId', verifyToken, async (req, res) => {
         });
     }
 
-    await deleteReview(reviewId)
+    await deleteReview(reviewId);
+
+    if (review.file_path) {
+      await fs.unlink(review.file_path).catch(() => {});
+    }
 
     res.json({ message: 'Review deleted successfully' });
   }
@@ -249,23 +325,23 @@ router.post('/reviews/:reviewId/vote', verifyToken, async (req, res) => {
   const { value } = req.body;
   // TODO: implement
   try{
-    const review = await getReviewById(reviewId)
-
-    if (!review){
-        return res.status(404).json({
-            message: `The particular review does not exist in the database.`
-        }); 
-    }
-
     if (value !== 1 && value !== -1) {
       return res.status(400).json({ message: 'Vote value must be 1 or -1' });
     }
-    
+
+    const review = await getReviewById(reviewId)
+    if (!review){
+        return res.status(404).json({
+            message: `The particular review does not exist in the database.`
+        });
+    }
+
+
     const vote = await upsertReviewVote(reviewId, req.user.user_id, value);
     const votes = await getReviewVoteTally(reviewId)
 
     return res.json({ votes, currentVote: vote ? vote.value : null });
-  } 
+  }
   catch (err) {
     console.error('Error processing vote:', err);
     return res.status(500).json({ message: 'Server error while processing vote' });
@@ -280,14 +356,13 @@ router.post('/reviews/:reviewId/vote', verifyToken, async (req, res) => {
 // Auth required. Body: { target_type: 'coursereview', target_id, reason }
 // Creates a moderation report against a review
 router.post('/reports', verifyToken, async (req, res) => {
-  const { target_type, target_id, reason } = req.body;
   // TODO: implement
   try{
     const {error, value} = reportSchema.validate(req.body)
 
     if (error){
         return res.status(400).json({ message: error.details[0].message });
-    }    
+    }
 
     const {target_type, target_id, reason} = value
 

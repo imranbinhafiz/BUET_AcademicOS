@@ -8,7 +8,7 @@
   --cr-red-hover: #d91a29;;
   --cr-black: #0f0f0f;
   --cr-dark-gray: #1a1a1a;
-  --cr-card-bg: #222222;
+  --cr-card-bg: #16161a;
   --cr-card-border: #333333;
   --cr-text-light: #e4e4e7;
   --cr-text-muted: #94949e;
@@ -122,8 +122,12 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
   margin-bottom: 2rem;
   box-sizing: border-box;
-  max-height: 80vh;
-  overflow-y: auto;
+
+  /* 1. Change this from 80vh to a large pixel value */
+  max-height: 1500px;
+  /* 2. Keep this as visible so the dropdown works */
+  overflow: visible;
+
   opacity: 1;
   transform: translateY(0);
   transition:
@@ -691,15 +695,46 @@ textarea.p5-input {
   display: flex;
   gap: 0.5rem;
   width: 100%;
+  align-items: stretch; /* Forces all elements to stretch to the exact same height */
 }
 
 .cr-report-box input {
   flex: 1;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .cr-report-box button {
-  font-size: 0.8rem;
-  padding: 0.3rem 0.6rem;
+  margin: 0;
+  padding: 0 1.25rem;
+  box-sizing: border-box;
+
+  /* These two lines are the magic bullet that stops the squishing */
+  height: auto !important;
+  max-height: none !important;
+
+  /* Keeps the text perfectly centered inside the button */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cr-submit-btn {
+  font-family: var(--font-cr);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 1px solid var(--cr-red);
+  background-color: var(--cr-red);
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cr-submit-btn:hover {
+  background-color: var(--cr-red-hover);
+  border-color: var(--cr-red-hover);
 }
 
 .cr-reported-note {
@@ -741,4 +776,80 @@ textarea.p5-input {
 .cr-anilist-reviews-list::-webkit-scrollbar-thumb:hover,
 .p5-parent-suggestions::-webkit-scrollbar-thumb:hover {
   background-color: var(--cr-red-hover);
+}
+
+
+/* ==========================================================================
+   Typeahead / Dropdown Suggestions
+   ========================================================================== */
+
+.p5-parent-search-wrapper {
+  position: relative;
+}
+
+/* This keeps the X button locked inside the input field */
+.p5-parent-input-row {
+  position: relative;
+}
+
+/* This styles the actual dropdown list so it becomes visible */
+.p5-parent-suggestions {
+  list-style: none;
+  margin: 0.4rem 0 0 0;
+  padding: 0;
+  background-color: #111; /* Matches your input backgrounds */
+  border: 1px solid var(--cr-card-border);
+  border-radius: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  position: absolute;
+  width: 100%;
+  z-index: 100; /* Forces it to hover OVER the other form fields */
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+  box-sizing: border-box;
+}
+
+.p5-parent-suggestion-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--cr-card-border);
+  color: var(--cr-text-light);
+  padding: 0.6rem 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+}
+
+.p5-parent-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.p5-parent-suggestion-item:hover {
+  background-color: #1a1a1a; /* Highlight on hover */
+}
+
+.p5-parent-suggestion-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p5-parent-suggestion-meta {
+  flex-shrink: 0;
+  color: var(--cr-red);
+  font-family: var(--font-cr);
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.p5-parent-selected-note {
+  font-size: 0.8rem;
+  color: var(--cr-text-muted);
+  margin: 0.5rem 0 0 0;
 }

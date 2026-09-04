@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import './CourseReviews.css';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:5000/api/course-reviews';
 const COURSES_API = `${API_BASE}/courses`;
 const REVIEWS_API = `${API_BASE}/reviews`;
 const DEPARTMENTS_API = `${API_BASE}/departments`;
@@ -176,9 +176,11 @@ export default function CourseReviews() {
         <div className="cr-courses-grid">
           {courses.map((c) => (
             <div key={c.course_code} className="cr-course-card">
+              {/* UPDATED: Added numerical difficulty score next to the text tag */}
               <span className={`cr-diff-tag cr-diff-${difficultyTag(c.avg_difficulty).toLowerCase()}`}>
-                {difficultyTag(c.avg_difficulty)}
+                {difficultyTag(c.avg_difficulty)} {c.avg_difficulty ? `- ${Number(c.avg_difficulty).toFixed(1)}/5.0` : ''}
               </span>
+
               <h3>{c.course_code}</h3>
               <p className="cr-course-name">{c.title}</p>
               <div className="cr-course-footer">
@@ -211,10 +213,17 @@ export default function CourseReviews() {
   );
 }
 
-function WriteReviewForm({ courses = [], isOpen, onSubmitted, onCancel }) {
-  const [selectedCourse, setSelectedCourse] = useState('');
-  const [teacherId, setTeacherId] = useState('');
+function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
+  const [courseQuery, setCourseQuery] = useState('');
+  const [courseMatches, setCourseMatches] = useState([]);
+  const [showCourseSuggestions, setShowCourseSuggestions] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+
+  const [teacherQuery, setTeacherQuery] = useState('');
   const [offerings, setOfferings] = useState([]);
+  const [showTeacherSuggestions, setShowTeacherSuggestions] = useState(false);
+  const [selectedOffering, setSelectedOffering] = useState(null);
+
   const [difficulty, setDifficulty] = useState(3);
   const [prereqUse, setPrereqUse] = useState(3);
   const [comment, setComment] = useState('');
@@ -224,6 +233,8 @@ function WriteReviewForm({ courses = [], isOpen, onSubmitted, onCancel }) {
   const [formError, setFormError] = useState('');
 
   const textareaRef = useRef(null);
+  const courseBoxRef = useRef(null);
+  const teacherBoxRef = useRef(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -233,18 +244,88 @@ function WriteReviewForm({ courses = [], isOpen, onSubmitted, onCancel }) {
   }, [comment]);
 
   useEffect(() => {
-    setTeacherId('');
+    if (selectedCourse) return;
+    const q = courseQuery.trim();
+    if (!q) {
+      setCourseMatches([]);
+      return;
+    }
+    const timeoutId = setTimeout(() => {
+      fetch(`${COURSES_API}?search=${encodeURIComponent(q)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setCourseMatches(data.slice(0, 8));
+        })
+        .catch(() => setCourseMatches([]));
+    }, 250);
+    return () => clearTimeout(timeoutId);
+  }, [courseQuery, selectedCourse]);
+
+  const pickCourse = (c) => {
+    setSelectedCourse(c);
+    setCourseQuery(`${c.course_code} — ${c.title}`);
+    setCourseMatches([]);
+    setShowCourseSuggestions(false);
+    setSelectedOffering(null);
+    setTeacherQuery('');
+    setOfferings([]);
+  };
+
+  const clearCourse = () => {
+    setSelectedCourse(null);
+    setCourseQuery('');
+    setCourseMatches([]);
+    setSelectedOffering(null);
+    setTeacherQuery('');
+    setOfferings([]);
+  };
+
+  useEffect(() => {
     if (!selectedCourse) {
       setOfferings([]);
       return;
     }
-    fetch(`${COURSES_API}/${selectedCourse}/offerings`)
+    fetch(`${COURSES_API}/${selectedCourse.course_code}/offerings`)
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data)) setOfferings(data);
+        if (Array.isArray(data)) {
+          setOfferings(data);
+        } else {
+          console.error("Expected an array of teachers, but got:", data);
+        }
       })
-      .catch(() => setOfferings([]));
-  }, [selectedCourse]);
+      .catch((err) => console.error("Teacher fetch failed:", err));
+    }, [selectedCourse]);
+
+  const teacherMatches = teacherQuery.trim()
+    ? offerings.filter((o) =>
+        o.teacher_name.toLowerCase().includes(teacherQuery.trim().toLowerCase())
+      )
+    : offerings;
+
+  const pickTeacher = (o) => {
+    setSelectedOffering(o);
+    setTeacherQuery(`${o.teacher_name} (${o.semester})`);
+    setShowTeacherSuggestions(false);
+  };
+
+  const clearTeacher = () => {
+    setSelectedOffering(null);
+    setTeacherQuery('');
+  };
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (courseBoxRef.current && !courseBoxRef.current.contains(e.target)) {
+        setShowCourseSuggestions(false);
+      }
+      if (teacherBoxRef.current && !teacherBoxRef.current.contains(e.target)) {
+        setShowTeacherSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -257,15 +338,15 @@ function WriteReviewForm({ courses = [], isOpen, onSubmitted, onCancel }) {
     }
 
     if (!selectedCourse) {
-      setFormError('Please select a course code.');
+      setFormError('Please select a course from the list.');
       return;
     }
 
     setSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append('course_code', selectedCourse);
-      if (teacherId) formData.append('offering_id', teacherId);
+      formData.append('course_code', selectedCourse.course_code);
+      if (selectedOffering) formData.append('offering_id', selectedOffering.offering_id);
       formData.append('difficulty', difficulty);
       formData.append('prereq_use', prereqUse);
       formData.append('comment', comment);
@@ -273,17 +354,14 @@ function WriteReviewForm({ courses = [], isOpen, onSubmitted, onCancel }) {
 
       const response = await fetch(REVIEWS_API, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to submit review');
 
-      setSelectedCourse('');
-      setTeacherId('');
+      clearCourse();
       setDifficulty(3);
       setPrereqUse(3);
       setComment('');
@@ -301,38 +379,101 @@ function WriteReviewForm({ courses = [], isOpen, onSubmitted, onCancel }) {
     <form className={`p5-upload-form ${!isOpen ? 'p5-form-closed' : ''}`} onSubmit={handleSubmit}>
       {formError && <div className="p5-error">{formError}</div>}
 
-      <div>
+      <div className="p5-parent-search-wrapper" ref={courseBoxRef}>
         <label className="p5-label">Select Course Code *</label>
-        <select
-          value={selectedCourse}
-          onChange={(e) => setSelectedCourse(e.target.value)}
-          className="p5-input"
-          required
-        >
-          <option value="">-- Choose Course --</option>
-          {courses.map((c) => (
-            <option key={c.course_code} value={c.course_code}>
-              {c.course_code} — {c.title}
-            </option>
-          ))}
-        </select>
+        <div className="p5-parent-input-row">
+          <input
+            type="text"
+            className="p5-input"
+            placeholder="Type a course code or name..."
+            value={courseQuery}
+            onChange={(e) => {
+              setCourseQuery(e.target.value);
+              setSelectedCourse(null);
+              setShowCourseSuggestions(true);
+            }}
+            onFocus={() => setShowCourseSuggestions(true)}
+            autoComplete="off"
+            required
+          />
+          {courseQuery && (
+            <button
+              type="button"
+              className="p5-parent-clear-btn"
+              onClick={clearCourse}
+              aria-label="Clear course"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {showCourseSuggestions && !selectedCourse && courseMatches.length > 0 && (
+          <ul className="p5-parent-suggestions">
+            {courseMatches.map((c) => (
+              <li key={c.course_code}>
+                <button
+                  type="button"
+                  className="p5-parent-suggestion-item"
+                  onClick={() => pickCourse(c)}
+                >
+                  <span className="p5-parent-suggestion-title">{c.title}</span>
+                  <span className="p5-parent-suggestion-meta">{c.course_code}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {selectedCourse && (
+          <p className="p5-parent-selected-note">
+            Selected: {selectedCourse.course_code} — {selectedCourse.title}
+          </p>
+        )}
       </div>
 
-      <div>
+      <div className="p5-parent-search-wrapper" ref={teacherBoxRef}>
         <label className="p5-label">Select Teacher (Optional)</label>
-        <select
-          value={teacherId}
-          onChange={(e) => setTeacherId(e.target.value)}
-          className="p5-input"
-          disabled={!selectedCourse}
-        >
-          <option value="">General / Unspecified Teacher</option>
-          {offerings.map((o) => (
-            <option key={o.offering_id} value={o.offering_id}>
-              {o.teacher_name} ({o.semester})
-            </option>
-          ))}
-        </select>
+        <div className="p5-parent-input-row">
+          <input
+            type="text"
+            className="p5-input"
+            placeholder={selectedCourse ? 'Type a teacher name...' : 'Choose a course first'}
+            value={teacherQuery}
+            onChange={(e) => {
+              setTeacherQuery(e.target.value);
+              setSelectedOffering(null);
+              setShowTeacherSuggestions(true);
+            }}
+            onFocus={() => selectedCourse && setShowTeacherSuggestions(true)}
+            disabled={!selectedCourse}
+            autoComplete="off"
+          />
+          {teacherQuery && (
+            <button
+              type="button"
+              className="p5-parent-clear-btn"
+              onClick={clearTeacher}
+              aria-label="Clear teacher"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {showTeacherSuggestions && !selectedOffering && teacherMatches.length > 0 && (
+          <ul className="p5-parent-suggestions">
+            {teacherMatches.map((o) => (
+              <li key={o.offering_id}>
+                <button
+                  type="button"
+                  className="p5-parent-suggestion-item"
+                  onClick={() => pickTeacher(o)}
+                >
+                  <span className="p5-parent-suggestion-title">{o.teacher_name}</span>
+                  <span className="p5-parent-suggestion-meta">{o.semester}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -342,6 +483,7 @@ function WriteReviewForm({ courses = [], isOpen, onSubmitted, onCancel }) {
             type="number"
             min="1"
             max="5"
+            step="0.1" /* <--- ADD THIS */
             required
             value={difficulty}
             onChange={(e) => setDifficulty(Number(e.target.value))}
@@ -355,6 +497,7 @@ function WriteReviewForm({ courses = [], isOpen, onSubmitted, onCancel }) {
             type="number"
             min="1"
             max="5"
+            step="0.1" /* <--- ADD THIS */
             required
             value={prereqUse}
             onChange={(e) => setPrereqUse(Number(e.target.value))}
@@ -375,9 +518,7 @@ function WriteReviewForm({ courses = [], isOpen, onSubmitted, onCancel }) {
             onChange={(e) => setFile(e.target.files[0] || null)}
             className="p5-file-input-hidden"
           />
-          <span className="p5-file-name">
-            {file ? file.name : 'No file chosen'}
-          </span>
+          <span className="p5-file-name">{file ? file.name : 'No file chosen'}</span>
         </div>
       </div>
 
@@ -396,20 +537,10 @@ function WriteReviewForm({ courses = [], isOpen, onSubmitted, onCancel }) {
       </div>
 
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.5rem' }}>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="p5-btn"
-          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-        >
+        <button type="submit" disabled={submitting} className="p5-btn">
           {submitting ? 'SUBMITTING...' : 'POST REVIEW'}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="p5-versions-btn"
-          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-        >
+        <button type="button" onClick={onCancel} className="p5-versions-btn">
           CANCEL
         </button>
       </div>
@@ -418,38 +549,51 @@ function WriteReviewForm({ courses = [], isOpen, onSubmitted, onCancel }) {
 }
 
 function CourseReviewsModal({ courseCode, currentUser, onClose }) {
+  const [downloadingId, setDownloadingId] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reportingId, setReportingId] = useState(null);
+  const [reportReason, setReportReason] = useState('');
 
-  const loadReviews = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await fetch(`${COURSES_API}/${courseCode}/reviews`);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to load reviews');
-      setReviews(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  const [expandedReviews, setExpandedReviews] = useState(new Set());
+  const MAX_REVIEW_LENGTH = 250;
+
+  // NEW: State to track both the sorting method AND the direction
+  const [sortBy, setSortBy] = useState('date');
+  const [order, setOrder] = useState('desc');
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      setLoading(true);
+      try {
+        const headers = {};
+        const token = localStorage.getItem('token');
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${COURSES_API}/${courseCode}/reviews`, {
+          headers
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to load reviews');
+        }
+
+        setReviews(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReviews();
   }, [courseCode]);
 
-  useEffect(() => {
-    loadReviews();
-  }, [loadReviews]);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
-
-  const handleReviewVote = async (reviewId, value) => {
+  const handleVote = async (reviewId, value) => {
     const token = localStorage.getItem('token');
     if (!token) {
       alert('Please log in to vote.');
@@ -481,55 +625,58 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
     }
   };
 
-  return (
-    <div className="cr-anilist-overlay" onClick={onClose}>
-      <div className="cr-anilist-container" onClick={(e) => e.stopPropagation()}>
-        <button className="cr-anilist-close-btn" onClick={onClose} aria-label="Close">
-          ✕
-        </button>
-
-        <header className="cr-anilist-header">
-          <span className="cr-anilist-tag">REVIEWS // DATABASE</span>
-          <h2>{courseCode}</h2>
-        </header>
-
-        {loading && <p className="p5-empty-state">Loading reviews...</p>}
-        {error && <p className="p5-error">{error}</p>}
-
-        <div className="cr-anilist-reviews-list">
-          {!loading && reviews.length === 0 && (
-            <p className="p5-empty-state">No reviews recorded for this course yet.</p>
-          )}
-
-          {reviews.map((r) => (
-            <AniListReviewCard
-              key={r.review_id}
-              review={r}
-              isOwnReview={currentUser && r.user_id === currentUser.user_id}
-              onVote={handleReviewVote}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AniListReviewCard({ review: r, isOwnReview, onVote }) {
-  const [showReportBox, setShowReportBox] = useState(false);
-  const [reportReason, setReportReason] = useState('');
-  const [reportSubmitting, setReportSubmitting] = useState(false);
-  const [reported, setReported] = useState(false);
-
-  const handleReportSubmit = async () => {
+  const handleDownloadAttachment = async (reviewId) => {
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('Please log in to report a review.');
+      alert('Please log in to download this attachment.');
       return;
     }
+
+    setDownloadingId(reviewId);
+    try {
+      const response = await fetch(`${REVIEWS_API}/${reviewId}/download`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        let message = 'Failed to download attachment';
+        try {
+          const data = await response.json();
+          message = data.message || message;
+        } catch {
+          // res.download() never sent JSON on failure paths that don't hit this branch anyway
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+
+      // Pull the filename the server set via res.download()'s Content-Disposition
+      // header, falling back to something generic if it's ever missing.
+      const disposition = response.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      const filename = match ? match[1] : `review-${reviewId}-attachment`;
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleReportSubmit = async (reviewId) => {
     if (!reportReason.trim()) return;
 
-    setReportSubmitting(true);
+    const token = localStorage.getItem('token');
     try {
       const response = await fetch(REPORTS_API, {
         method: 'POST',
@@ -539,127 +686,239 @@ function AniListReviewCard({ review: r, isOwnReview, onVote }) {
         },
         body: JSON.stringify({
           target_type: 'coursereview',
-          target_id: r.review_id,
-          reason: reportReason.trim()
+          target_id: reviewId,
+          reason: reportReason
         })
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Report failed');
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to report');
+      }
 
-      setReported(true);
-      setShowReportBox(false);
+      alert('Report submitted successfully. A moderator will review it.');
+      setReportingId(null);
+      setReportReason('');
     } catch (err) {
       alert(err.message);
-    } finally {
-      setReportSubmitting(false);
     }
   };
 
-  const calculatedScore = (((6 - r.difficulty) + r.prereq_use) / 2).toFixed(1);
+  const toggleExpand = (reviewId) => {
+    setExpandedReviews((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(reviewId)) {
+        newSet.delete(reviewId);
+      } else {
+        newSet.add(reviewId);
+      }
+      return newSet;
+    });
+  };
+
+  // UPDATED: Dynamic calculation applies ASC or DESC based on the button state
+  const sortedReviews = [...reviews].sort((a, b) => {
+    let diff = 0;
+    if (sortBy === 'date') {
+      diff = new Date(b.created_at) - new Date(a.created_at);
+    } else if (sortBy === 'votes') {
+      diff = (b.vote_tally || 0) - (a.vote_tally || 0);
+    } else if (sortBy === 'usefulness') {
+      diff = Number(b.prereq_use || 0) - Number(a.prereq_use || 0);
+    } else if (sortBy === 'difficulty') {
+      diff = Number(b.difficulty || 0) - Number(a.difficulty || 0);
+    }
+    // Multiply by -1 to flip the array if the user wants Ascending
+    return order === 'asc' ? -diff : diff;
+  });
 
   return (
-    <article className="cr-anilist-card">
-      <div className="cr-anilist-user-bar">
-        <div className="cr-anilist-author">
-          <div className="cr-anilist-avatar">
-            {r.user_name ? r.user_name.charAt(0).toUpperCase() : 'U'}
+    <div className="cr-anilist-overlay" onClick={onClose}>
+      <div className="cr-anilist-container" onClick={(e) => e.stopPropagation()}>
+        <button className="cr-anilist-close-btn" onClick={onClose}>
+          ✕
+        </button>
+
+        <div className="cr-anilist-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div>
+            <span className="cr-anilist-tag">COURSE REVIEWS</span>
+            <h2>{courseCode}</h2>
           </div>
-          <div className="cr-anilist-user-info">
-            <span className="cr-author-name">{r.user_name || 'Anonymous Student'}</span>
-            <span className="cr-author-meta">
-              {r.teacher_name ? `Instructor: ${r.teacher_name}` : 'General Instructor'}
-              {r.semester ? ` • ${r.semester}` : ''}
-            </span>
-          </div>
-        </div>
 
-        <div className="p5-vote-column">
-          <button
-            className={`p5-vote-btn ${r.current_vote === 1 ? 'p5-vote-active-up' : ''}`}
-            onClick={() => onVote(r.review_id, 1)}
-          >
-            ▲
-          </button>
-          <span className="p5-vote-tally">{r.vote_tally ?? 0}</span>
-          <button
-            className={`p5-vote-btn ${r.current_vote === -1 ? 'p5-vote-active-down' : ''}`}
-            onClick={() => onVote(r.review_id, -1)}
-          >
-            ▼
-          </button>
-        </div>
-      </div>
-
-      <div className="cr-anilist-body">
-        <p className="cr-anilist-text">{r.comment}</p>
-
-        {r.file_path && (
-          <div className="cr-attachment-link">
-            📁{' '}
-            <a href={`http://localhost:5000/${r.file_path}`} target="_blank" rel="noreferrer">
-              Download Review Attachment
-            </a>
-          </div>
-        )}
-      </div>
-
-      <div className="cr-anilist-bottom-rating">
-        <div className="cr-rating-metrics">
-          <div className="cr-metric">
-            <span className="cr-metric-label">DIFFICULTY</span>
-            <span className="cr-metric-val">{r.difficulty} / 5</span>
-          </div>
-          <div className="cr-metric">
-            <span className="cr-metric-label">USEFULNESS</span>
-            <span className="cr-metric-val">{r.prereq_use} / 5</span>
-          </div>
-        </div>
-
-        <div className="cr-anilist-final-score">
-          <span className="cr-score-label">OVERALL RATING</span>
-          <span className="cr-score-number">
-            {calculatedScore} <span>/ 5.0</span>
-          </span>
-        </div>
-      </div>
-
-      {!isOwnReview && (
-        <div className="cr-anilist-actions">
-          {reported ? (
-            <span className="cr-reported-note">🚩 Reported to Moderation</span>
-          ) : showReportBox ? (
-            <div className="cr-report-box">
-              <input
-                type="text"
-                placeholder="Reason for reporting..."
-                value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
+          {!loading && !error && reviews.length > 0 && (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <select
                 className="p5-input"
-              />
+                style={{ width: 'auto', minWidth: '150px', padding: '0.4rem 0.75rem' }}
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                {/* Labels modified slightly to make sense in both ASC and DESC */}
+                <option value="date">Sort: Newest</option>
+                <option value="votes">Sort: Votes</option>
+                <option value="usefulness">Sort: Usefulness</option>
+                <option value="difficulty">Sort: Difficulty</option>
+              </select>
+
               <button
                 type="button"
-                className="p5-card-btn"
-                disabled={reportSubmitting || !reportReason.trim()}
-                onClick={handleReportSubmit}
+                className="p5-order-btn"
+                style={{ padding: '0.4rem 0.85rem' }} // Slimmed down to match the input height
+                onClick={() => setOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
               >
-                {reportSubmitting ? 'SENDING...' : 'CONFIRM'}
-              </button>
-              <button type="button" className="p5-versions-btn" onClick={() => setShowReportBox(false)}>
-                CANCEL
+                {order === 'asc' ? '↑ ASC' : '↓ DESC'}
               </button>
             </div>
-          ) : (
-            <button
-              type="button"
-              className="cr-report-btn"
-              onClick={() => setShowReportBox(true)}
-            >
-              🚩 REPORT
-            </button>
           )}
         </div>
-      )}
-    </article>
+
+        <div className="cr-anilist-reviews-list">
+          {loading && <p className="p5-empty-state">Loading reviews...</p>}
+          {error && <p className="p5-error">{error}</p>}
+
+          {!loading && !error && reviews.length === 0 && (
+            <p className="p5-empty-state">No reviews yet for this course. Be the first!</p>
+          )}
+
+          {!loading &&
+            !error &&
+            sortedReviews.map((review) => {
+              const isExpanded = expandedReviews.has(review.review_id);
+
+              const lines = review.comment.split('\n');
+              const isLong = review.comment.length > MAX_REVIEW_LENGTH || lines.length > 4;
+
+              let displayText = review.comment;
+              if (!isExpanded && isLong) {
+                if (lines.length > 4) {
+                  displayText = lines.slice(0, 4).join('\n') + '...';
+                }
+                if (displayText.length > MAX_REVIEW_LENGTH) {
+                  displayText = displayText.substring(0, MAX_REVIEW_LENGTH) + '...';
+                }
+              }
+
+              return (
+                <div key={review.review_id} className="cr-anilist-card">
+                  <div className="cr-anilist-user-bar">
+                    <div className="cr-anilist-author">
+                      <div className="cr-anilist-avatar">
+                        {review.reviewer_name ? review.reviewer_name.charAt(0).toUpperCase() : 'A'}
+                      </div>
+                      <div className="cr-anilist-user-info">
+                        <span className="cr-author-name">{review.reviewer_name || 'Anonymous'}</span>
+                        <span className="cr-author-meta">
+                          {review.teacher_name ? `Taken with ${review.teacher_name}` : 'General Review'}
+                          {' • '}
+                          {new Date(review.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p5-vote-column">
+                      <button
+                        className={`p5-vote-btn ${review.current_vote === 1 ? 'p5-vote-active-up' : ''}`}
+                        onClick={() => handleVote(review.review_id, 1)}
+                      >
+                        ▲
+                      </button>
+                      <span className="p5-vote-tally">{review.vote_tally}</span>
+                      <button
+                        className={`p5-vote-btn ${review.current_vote === -1 ? 'p5-vote-active-down' : ''}`}
+                        onClick={() => handleVote(review.review_id, -1)}
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="cr-anilist-body">
+                    <p className="cr-anilist-text">
+                      {displayText}
+                    </p>
+
+                    {isLong && (
+                      <button
+                        onClick={() => toggleExpand(review.review_id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--cr-red)',
+                          cursor: 'pointer',
+                          padding: 0,
+                          fontFamily: 'var(--font-cr)',
+                          fontWeight: 'bold',
+                          fontSize: '0.85rem'
+                        }}
+                      >
+                        {isExpanded ? 'SHOW LESS' : 'READ MORE'}
+                      </button>
+                    )}
+
+                    {review.file_path && (
+                      <div className="cr-attachment-link">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadAttachment(review.review_id)}
+                          disabled={downloadingId === review.review_id}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--cr-red)',
+                            cursor: downloadingId === review.review_id ? 'default' : 'pointer',
+                            padding: 0,
+                            fontFamily: 'var(--font-cr)',
+                            fontWeight: 'bold',
+                            fontSize: '0.85rem',
+                            textDecoration: 'underline'
+                          }}
+                        >
+                          📎 {downloadingId === review.review_id ? 'Downloading...' : 'Download attached notes'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="cr-anilist-bottom-rating">
+                    <div className="cr-rating-metrics">
+                      <div className="cr-metric">
+                        <span className="cr-metric-label">DIFFICULTY</span>
+                        <span className="cr-metric-val">{review.difficulty} / 5</span>
+                      </div>
+                      <div className="cr-metric">
+                        <span className="cr-metric-label">USEFULNESS</span>
+                        <span className="cr-metric-val">{review.prereq_use} / 5</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="cr-anilist-actions">
+                    {currentUser && reportingId === review.review_id ? (
+                      <div className="cr-report-box">
+                        <input
+                          type="text"
+                          className="p5-input"
+                          placeholder="Reason for reporting..."
+                          value={reportReason}
+                          onChange={(e) => setReportReason(e.target.value)}
+                          autoFocus
+                        />
+                        <button className="cr-submit-btn" onClick={() => handleReportSubmit(review.review_id)}>SUBMIT</button>
+                        <button className="p5-versions-btn" onClick={() => setReportingId(null)}>CANCEL</button>
+                      </div>
+                    ) : (
+                      currentUser && (
+                        <button className="cr-report-btn" onClick={() => setReportingId(review.review_id)}>
+                          ⚑ Report
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </div>
+    </div>
   );
 }
