@@ -237,19 +237,22 @@ export default function Performance() {
           <h2>TERM PERFORMANCE</h2>
         </div>
         {myPerformance && (
-          <div className="performance-progress-chip">
-            <span>BATCH {myPerformance.progress.batch_year}</span>
-            <strong>COMPLETED THROUGH {myPerformance.progress.latest_completed_term_code}</strong>
+          <div className="performance-progress-chip" aria-label={`Batch ${myPerformance.progress.batch_year} progress`}>
+            <div className="performance-signal" aria-hidden="true"><i /><i /><i /></div>
+            <div>
+              <span>BATCH {myPerformance.progress.batch_year}</span>
+              <strong>COMPLETED THROUGH {myPerformance.progress.latest_completed_term_code}</strong>
+            </div>
           </div>
         )}
       </div>
 
       <div className="performance-tabs" role="tablist" aria-label="Performance views">
         <button type="button" className={activeView === 'mine' ? 'performance-tab active' : 'performance-tab'} onClick={() => setActiveView('mine')}>
-          MY RESULTS
+          <span>01</span> MY RESULTS
         </button>
         <button type="button" className={activeView === 'batch' ? 'performance-tab active' : 'performance-tab'} onClick={() => setActiveView('batch')}>
-          BATCH ANALYSIS
+          <span>02</span> BATCH ANALYSIS
         </button>
       </div>
 
@@ -270,7 +273,7 @@ export default function Performance() {
                     ))}
                   </select>
                 </label>
-                <p>Only terms through <strong>{myPerformance.progress.latest_completed_term_code}</strong> can be edited. This rule is enforced by PostgreSQL too.</p>
+                <p><b>DATA POLICY</b> Only terms through <strong>{myPerformance.progress.latest_completed_term_code}</strong> can be edited. This rule is enforced by PostgreSQL too.</p>
               </div>
 
               <div className="performance-summary-grid">
@@ -320,6 +323,7 @@ export default function Performance() {
       {activeView === 'batch' && (
         <>
           <div className="performance-analysis-controls">
+            <div className="performance-control-intro"><span>COHORT EXPLORER</span><p>Compare only completed, anonymous term results.</p></div>
             <label className="performance-term-picker"><span>BATCH</span><select value={analysisBatch} onChange={(event) => setAnalysisBatch(event.target.value)}>{batches.map((batch) => <option key={batch.batch_year} value={batch.batch_year}>BATCH {batch.batch_year}</option>)}</select></label>
             <label className="performance-term-picker"><span>COMPLETED TERM</span><select value={analysisTerm} onChange={(event) => setAnalysisTerm(event.target.value)}>{analysisTerms.map((term) => <option key={term.term_code} value={term.term_code}>{term.display_name}</option>)}</select></label>
           </div>
