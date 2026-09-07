@@ -123,6 +123,13 @@ router.get('/:id', optionalAuth, async (req, res) => {
       return res.status(404).json({ message: 'Resource not found' });
     }
 
+    const canSeeUnapproved = req.user && (
+      req.user.user_id === resource.user_id || req.user.role === 'admin'
+    );
+    if (resource.approval_status !== 'approved' && !canSeeUnapproved) {
+      return res.status(404).json({ message: 'Resource not found' });
+    }
+
     res.json(resource);
   } catch (err) {
     console.error('Error while getting resource by ID', err);
@@ -206,6 +213,11 @@ router.post('/:id/download', verifyToken, async (req, res) => {
     const resource = await getResourceById(id);
 
     if (!resource || !resource.file_path) {
+      return res.status(404).json({ message: 'Resource or file not found' });
+    }
+
+    const canDownloadUnapproved = req.user.user_id === resource.user_id || req.user.role === 'admin';
+    if (resource.approval_status !== 'approved' && !canDownloadUnapproved) {
       return res.status(404).json({ message: 'Resource or file not found' });
     }
 

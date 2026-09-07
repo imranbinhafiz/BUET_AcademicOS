@@ -180,7 +180,7 @@ export default function CourseReviews() {
               <span className={`cr-diff-tag cr-diff-${difficultyTag(c.avg_difficulty).toLowerCase()}`}>
                 {difficultyTag(c.avg_difficulty)} {c.avg_difficulty ? `- ${Number(c.avg_difficulty).toFixed(1)}/5.0` : ''}
               </span>
-              
+
               <h3>{c.course_code}</h3>
               <p className="cr-course-name">{c.title}</p>
               <div className="cr-course-footer">
@@ -217,7 +217,7 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
   const [courseQuery, setCourseQuery] = useState('');
   const [courseMatches, setCourseMatches] = useState([]);
   const [showCourseSuggestions, setShowCourseSuggestions] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState(null); 
+  const [selectedCourse, setSelectedCourse] = useState(null);
 
   const [teacherQuery, setTeacherQuery] = useState('');
   const [offerings, setOfferings] = useState([]);
@@ -244,7 +244,7 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
   }, [comment]);
 
   useEffect(() => {
-    if (selectedCourse) return; 
+    if (selectedCourse) return;
     const q = courseQuery.trim();
     if (!q) {
       setCourseMatches([]);
@@ -295,7 +295,7 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
         }
       })
       .catch((err) => console.error("Teacher fetch failed:", err));
-    }, [selectedCourse]); 
+    }, [selectedCourse]);
 
   const teacherMatches = teacherQuery.trim()
     ? offerings.filter((o) =>
@@ -555,7 +555,7 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
   const [error, setError] = useState('');
   const [reportingId, setReportingId] = useState(null);
   const [reportReason, setReportReason] = useState('');
-  
+
   const [expandedReviews, setExpandedReviews] = useState(new Set());
   const MAX_REVIEW_LENGTH = 250;
 
@@ -675,7 +675,7 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
 
   const handleReportSubmit = async (reviewId) => {
     if (!reportReason.trim()) return;
-    
+
     const token = localStorage.getItem('token');
     try {
       const response = await fetch(REPORTS_API, {
@@ -744,7 +744,7 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
             <span className="cr-anilist-tag">COURSE REVIEWS</span>
             <h2>{courseCode}</h2>
           </div>
-          
+
           {!loading && !error && reviews.length > 0 && (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <select
@@ -759,7 +759,7 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
                 <option value="usefulness">Sort: Usefulness</option>
                 <option value="difficulty">Sort: Difficulty</option>
               </select>
-              
+
               <button
                 type="button"
                 className="p5-order-btn"
@@ -775,7 +775,7 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
         <div className="cr-anilist-reviews-list">
           {loading && <p className="p5-empty-state">Loading reviews...</p>}
           {error && <p className="p5-error">{error}</p>}
-          
+
           {!loading && !error && reviews.length === 0 && (
             <p className="p5-empty-state">No reviews yet for this course. Be the first!</p>
           )}
@@ -784,7 +784,7 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
             !error &&
             sortedReviews.map((review) => {
               const isExpanded = expandedReviews.has(review.review_id);
-              
+
               const lines = review.comment.split('\n');
               const isLong = review.comment.length > MAX_REVIEW_LENGTH || lines.length > 4;
 
@@ -808,7 +808,7 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
                       <div className="cr-anilist-user-info">
                         <span className="cr-author-name">{review.reviewer_name || 'Anonymous'}</span>
                         <span className="cr-author-meta">
-                          {review.teacher_name ? `Taken with ${review.teacher_name}` : 'General Review'} 
+                          {review.teacher_name ? `Taken with ${review.teacher_name}` : 'General Review'}
                           {' • '}
                           {new Date(review.created_at).toLocaleDateString()}
                         </span>
@@ -836,9 +836,9 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
                     <p className="cr-anilist-text">
                       {displayText}
                     </p>
-                    
+
                     {isLong && (
-                      <button 
+                      <button
                         onClick={() => toggleExpand(review.review_id)}
                         style={{
                           background: 'none',

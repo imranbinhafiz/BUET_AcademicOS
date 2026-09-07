@@ -1,4 +1,13 @@
 -- PostgreSQL Schema for BUET Academicos
+--
+-- Fresh-install note: this is the structural baseline through the historical
+-- 001/002 updates. To obtain the current term-wise CSE performance design,
+-- run fresh_install_core_departments.sql and then
+-- 003_add_cse_curriculum_performance.sql and
+-- 004_add_admin_batch_progress.sql and
+-- 005_finish_course_review_support.sql and
+-- 006_add_activity_notifications.sql. Do not run 001/002 after this file
+-- because their changes are already represented here.
 -- Fixed version addressing:
 --   (1) Missing User-Course performance/GPA data      -> user_course_performance
 --   (2) Topic flagging (now scoped to course reviews) -> coursereview_topic_flag
@@ -188,12 +197,14 @@ ALTER SEQUENCE public.topic_topic_id_seq OWNED BY public.topics.topic_id;
 --
 CREATE TABLE public.coursereview (
     review_id integer NOT NULL,
-    difficulty integer,
-    prereq_use integer,
+    difficulty numeric(2,1),
+    prereq_use numeric(2,1),
     comment text,
     user_id integer NOT NULL,
     course_code character varying(20) NOT NULL,
     offering_id integer,
+    file_path text,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT coursereview_difficulty_check CHECK (((difficulty >= 1) AND (difficulty <= 5))),
     CONSTRAINT coursereview_prereq_use_check CHECK (((prereq_use >= 1) AND (prereq_use <= 5)))
 );

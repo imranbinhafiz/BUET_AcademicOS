@@ -50,14 +50,12 @@ const ORDER_OPTIONS = ['asc', 'desc'];
 const reviewSchema = Joi.object({
   course_code: Joi.string().max(20).trim().required(),
   offering_id: Joi.number().integer().positive().optional().allow(null, ''),
-  // Remove .integer() from these two lines:
-  difficulty: Joi.number().min(1).max(5).required(), 
+  difficulty: Joi.number().min(1).max(5).required(),
   prereq_use: Joi.number().min(1).max(5).required(),
   comment: Joi.string().min(3).required()
 });
 
 const reviewUpdateSchema = Joi.object({
-  // Remove .integer() from these two lines:
   difficulty: Joi.number().min(1).max(5),
   prereq_use: Joi.number().min(1).max(5),
   comment: Joi.string().min(3)
@@ -103,7 +101,7 @@ router.get('/courses', async (req, res) => {
       message: `Invalid sortBy. Must be one of: ${SORT_OPTIONS.join(', ')}`
     });
   }
- 
+
   if (order && !ORDER_OPTIONS.includes(order)) {
     return res.status(400).json({
       message: `Invalid order. Must be one of: ${ORDER_OPTIONS.join(', ')}`
@@ -228,15 +226,10 @@ router.post('/reviews/:id/download', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Review or attachment not found' });
     }
 
-    // Optional: If you want to track download counts, you can create a log function. 
-    // Otherwise, you can safely skip/remove this line if you aren't tracking review download counts.
-    // await logReviewDownload(id, req.user.user_id);
-
     const absolutePath = path.resolve(review.file_path);
-    
+
     // Gives the downloaded file a clean name using the course code and extension
     const downloadName = `${review.course_code}-review-attachment${path.extname(review.file_path)}`;
-    
     return res.download(absolutePath, downloadName);
   } catch (err) {
     console.error('Error while downloading review attachment', err);
@@ -309,7 +302,11 @@ router.delete('/reviews/:reviewId', verifyToken, async (req, res) => {
         });
     }
 
-    await deleteReview(reviewId)
+    await deleteReview(reviewId);
+
+    if (review.file_path) {
+      await fs.unlink(review.file_path).catch(() => {});
+    }
 
     res.json({ message: 'Review deleted successfully' });
   }
@@ -336,15 +333,15 @@ router.post('/reviews/:reviewId/vote', verifyToken, async (req, res) => {
     if (!review){
         return res.status(404).json({
             message: `The particular review does not exist in the database.`
-        }); 
+        });
     }
 
-    
+
     const vote = await upsertReviewVote(reviewId, req.user.user_id, value);
     const votes = await getReviewVoteTally(reviewId)
 
     return res.json({ votes, currentVote: vote ? vote.value : null });
-  } 
+  }
   catch (err) {
     console.error('Error processing vote:', err);
     return res.status(500).json({ message: 'Server error while processing vote' });
@@ -365,7 +362,7 @@ router.post('/reports', verifyToken, async (req, res) => {
 
     if (error){
         return res.status(400).json({ message: error.details[0].message });
-    }    
+    }
 
     const {target_type, target_id, reason} = value
 

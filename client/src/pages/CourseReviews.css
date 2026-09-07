@@ -122,12 +122,12 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
   margin-bottom: 2rem;
   box-sizing: border-box;
-  
+
   /* 1. Change this from 80vh to a large pixel value */
-  max-height: 1500px; 
+  max-height: 1500px;
   /* 2. Keep this as visible so the dropdown works */
-  overflow: visible; 
-  
+  overflow: visible;
+
   opacity: 1;
   transform: translateY(0);
   transition:
@@ -708,11 +708,11 @@ textarea.p5-input {
   margin: 0;
   padding: 0 1.25rem;
   box-sizing: border-box;
-  
+
   /* These two lines are the magic bullet that stops the squishing */
-  height: auto !important; 
-  max-height: none !important; 
-  
+  height: auto !important;
+  max-height: none !important;
+
   /* Keeps the text perfectly centered inside the button */
   display: inline-flex;
   align-items: center;
@@ -789,7 +789,7 @@ textarea.p5-input {
 
 /* This keeps the X button locked inside the input field */
 .p5-parent-input-row {
-  position: relative; 
+  position: relative;
 }
 
 /* This styles the actual dropdown list so it becomes visible */
