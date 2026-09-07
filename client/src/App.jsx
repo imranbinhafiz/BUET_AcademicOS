@@ -6,13 +6,14 @@ import Auth from './pages/Auth.jsx';
 import Resources from './pages/Resources';
 import CourseReviews from './pages/CourseReviews';
 import TopContributors from './pages/TopContributors';
+import UserProfile from './pages/UserProfile';
 
 export default function App() {
   return (
     <Routes>
         <Route path="/login" element={<Auth isSignup={false}/>} />
         <Route path="/register" element={<Auth isSignup={true}/>} />
-
+        <Route path="/profiles/:userId" element={<UserProfile />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/resources" element={<Resources />} />
