@@ -146,13 +146,32 @@ async function getEditablePlacement(userId, curriculumCourseId) {
 }
 
 async function saveCoursePerformance(userId, curriculumCourseId, gradePoint) {
+  // 1. We must fetch the course_code first because your PostgreSQL trigger 
+  // explicitly requires NEW.course_code to validate the placement!
+  const courseRes = await db.query(
+    `SELECT course_code FROM curriculum_courses WHERE curriculum_course_id = $1`,
+    [curriculumCourseId]
+  );
+  
+  if (courseRes.rows.length === 0) {
+    throw new Error("Invalid curriculum course placement.");
+  }
+  
+  const courseCode = courseRes.rows[0].course_code;
+
+  // 2. Insert the data, including the fetched course_code. 
+  // We also explicitly set updated_at = CURRENT_TIMESTAMP on conflict so 
+  // the timestamp correctly updates if a user overrides an existing grade.
   const result = await db.query(
-    `INSERT INTO user_course_performance (user_id, curriculum_course_id, grade_point)
-     VALUES ($1, $2, $3)
+    `INSERT INTO user_course_performance (user_id, curriculum_course_id, course_code, grade_point)
+     VALUES ($1, $2, $3, $4)
      ON CONFLICT (user_id, curriculum_course_id)
-     DO UPDATE SET grade_point = EXCLUDED.grade_point
-     RETURNING user_id, curriculum_course_id, grade_point, updated_at`,
-    [userId, curriculumCourseId, gradePoint]
+     DO UPDATE SET 
+        grade_point = EXCLUDED.grade_point, 
+        course_code = EXCLUDED.course_code,
+        updated_at = CURRENT_TIMESTAMP
+     RETURNING user_id, curriculum_course_id, course_code, grade_point, updated_at`,
+    [userId, curriculumCourseId, courseCode, gradePoint]
   );
 
   return result.rows[0];

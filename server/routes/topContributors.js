@@ -1,38 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const {
-  getTopContributors,
-  getUserProfile
-} = require('../models/topContributors');
+const { getTopContributors } = require('../models/topContributors');
 
-// ==========================================================================
-// LEADERBOARD
-// ==========================================================================
-
-// GET /api/top-contributors
-// Query params: limit (optional, default e.g. 20)
-// Returns contributors ranked by points, descending. Each row should
-// include at least: user_id, name, avatar_url, points, uploads
-// (uploads = count of resources/reviews contributed, however "points" ends
-// up being calculated on your end — e.g. weighted sum of uploads, votes
-// received, reviews written, etc.)
-router.get('/top-contributors', async (req, res) => {
+// This becomes GET /api/top-contributors
+router.get('/', async (req, res) => {
   const { limit } = req.query;
-  // TODO: implement
-});
 
-// ==========================================================================
-// PROFILE
-// ==========================================================================
-
-// GET /api/users/:userId/profile
-// Public profile data for a single user — used by the profile page that
-// clicking a leaderboard row navigates to. Should include at least:
-// user_id, name, avatar_url, points, uploads, and whatever else the
-// profile page needs to render (join date, bio, recent contributions, etc.)
-router.get('/users/:userId/profile', async (req, res) => {
-  const { userId } = req.params;
-  // TODO: implement
+  try {
+    const Toppers = await getTopContributors(limit);
+    return res.status(200).json(Toppers);
+  } 
+  catch (err) {
+    console.error('Error fetching top contributors:', err);
+    return res.status(500).json({ message: 'Server error while fetching top contributors.' });
+  }
 });
 
 module.exports = router;

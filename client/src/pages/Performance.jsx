@@ -22,6 +22,29 @@ function formatGpa(value) {
   return Number.isFinite(number) ? number.toFixed(2) : '—';
 }
 
+function normalizeGradeValue(value) {
+  return value == null ? '' : String(Number(value));
+}
+
+function summarizeCourses(courses) {
+  const recorded = courses.filter((course) => course.grade_point !== null && course.grade_point !== undefined);
+  const expectedCredits = courses.reduce((sum, course) => sum + Number(course.credits), 0);
+  const recordedCredits = recorded.reduce((sum, course) => sum + Number(course.credits), 0);
+  const weightedPoints = recorded.reduce(
+    (sum, course) => sum + Number(course.grade_point) * Number(course.credits),
+    0
+  );
+
+  return {
+    expected_courses: courses.length,
+    expected_credits: expectedCredits.toFixed(2),
+    recorded_courses: recorded.length,
+    recorded_credits: recordedCredits.toFixed(2),
+    term_gpa: recordedCredits ? (weightedPoints / recordedCredits).toFixed(2) : null,
+    is_complete: courses.length > 0 && recorded.length === courses.length
+  };
+}
+
 async function getJson(response) {
   const data = await response.json();
   if (!response.ok) throw new Error(data.message || 'The request could not be completed.');
@@ -53,7 +76,7 @@ export default function Performance() {
   function loadDrafts(courses) {
     setGradeDrafts(Object.fromEntries(courses.map((course) => [
       course.curriculum_course_id,
-      course.grade_point == null ? '' : String(course.grade_point)
+      normalizeGradeValue(course.grade_point)
     ])));
   }
 
@@ -83,7 +106,6 @@ export default function Performance() {
       return;
     }
     loadMyPerformance();
-    // Token is the authentication boundary for initial load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -182,7 +204,15 @@ export default function Performance() {
           body: JSON.stringify({ grade_point: Number(gradePoint) })
         }
       ));
-      await loadMyPerformance(selectedTerm);
+      setMyPerformance((current) => {
+        if (!current) return current;
+        const courses = current.courses.map((currentCourse) => (
+          currentCourse.curriculum_course_id === course.curriculum_course_id
+            ? { ...currentCourse, grade_point: Number(gradePoint), updated_at: new Date().toISOString() }
+            : currentCourse
+        ));
+        return { ...current, courses, summary: summarizeCourses(courses) };
+      });
       setNotice(`${course.course_code} saved.`);
     } catch (err) {
       setError(err.message);
@@ -202,7 +232,15 @@ export default function Performance() {
         `${API_BASE}/me/courses/${course.curriculum_course_id}`,
         { method: 'DELETE', headers }
       ));
-      await loadMyPerformance(selectedTerm);
+      setMyPerformance((current) => {
+        if (!current) return current;
+        const courses = current.courses.map((currentCourse) => (
+          currentCourse.curriculum_course_id === course.curriculum_course_id
+            ? { ...currentCourse, grade_point: null, updated_at: null }
+            : currentCourse
+        ));
+        return { ...current, courses, summary: summarizeCourses(courses) };
+      });
       setNotice(`${course.course_code} removed.`);
     } catch (err) {
       setError(err.message);
@@ -213,12 +251,12 @@ export default function Performance() {
 
   if (!token) {
     return (
-      <section className="performance-page">
+      <section className="cr-reviews-page">
         <div className="p5-page-header"><h2>TERM PERFORMANCE</h2></div>
         <div className="performance-login-card">
           <h3>LOG IN TO TRACK RESULTS</h3>
           <p>Record official grade points for completed terms and explore anonymous batch analysis.</p>
-          <Link to="/login" className="performance-primary-button">LOG IN</Link>
+          <Link to="/login" className="p5-btn" style={{ textDecoration: 'none', display: 'inline-block', width: 'fit-content' }}>LOG IN</Link>
         </div>
       </section>
     );
@@ -230,85 +268,121 @@ export default function Performance() {
   const analyticsVisible = batchStats?.availability.analytics_visible;
 
   return (
-    <section className="performance-page">
-      <div className="p5-page-header performance-header">
+    <section className="cr-reviews-page">
+      <div className="p5-page-header">
         <div>
-          <p className="performance-kicker">ACADEMIC RECORD</p>
+          <span className="cr-anilist-tag" style={{ display: 'block', marginBottom: '0.4rem' }}>ACADEMIC RECORD</span>
           <h2>TERM PERFORMANCE</h2>
         </div>
         {myPerformance && (
-          <div className="performance-progress-chip" aria-label={`Batch ${myPerformance.progress.batch_year} progress`}>
+          <div className="performance-progress-chip">
             <div className="performance-signal" aria-hidden="true"><i /><i /><i /></div>
             <div>
               <span>BATCH {myPerformance.progress.batch_year}</span>
-              <strong>COMPLETED THROUGH {myPerformance.progress.latest_completed_term_code}</strong>
+              <strong>COMPLETED: {myPerformance.progress.latest_completed_term_code}</strong>
             </div>
           </div>
         )}
       </div>
 
-      <div className="performance-tabs" role="tablist" aria-label="Performance views">
-        <button type="button" className={activeView === 'mine' ? 'performance-tab active' : 'performance-tab'} onClick={() => setActiveView('mine')}>
-          <span>01</span> MY RESULTS
+      <div className="performance-tab-container">
+        <button 
+          type="button" 
+          className={`performance-tab ${activeView === 'mine' ? 'active' : ''}`} 
+          onClick={() => setActiveView('mine')}
+        >
+          MY RESULTS
         </button>
-        <button type="button" className={activeView === 'batch' ? 'performance-tab active' : 'performance-tab'} onClick={() => setActiveView('batch')}>
-          <span>02</span> BATCH ANALYSIS
+        <button 
+          type="button" 
+          className={`performance-tab ${activeView === 'batch' ? 'active' : ''}`} 
+          onClick={() => setActiveView('batch')}
+        >
+          BATCH ANALYSIS
         </button>
       </div>
 
-      {error && <div className="performance-message error">{error}</div>}
-      {notice && <div className="performance-message success">{notice}</div>}
+      {error && <div className="p5-error">{error}</div>}
+      {notice && <div className="p5-error" style={{ borderColor: '#4caf50', color: '#4caf50', background: 'rgba(76, 175, 80, 0.1)' }}>{notice}</div>}
 
       {activeView === 'mine' && (
         <>
-          {loadingMine && <p className="performance-loading">Loading your curriculum and results...</p>}
+          {loadingMine && (
+            <div className="performance-loading-skeleton" aria-label="Loading performance results">
+              <div className="performance-skeleton-summary">
+                {Array.from({ length: 3 }, (_, index) => <div className="cr-course-card data-skeleton-card" key={index}><span className="data-skeleton-line short" /><span className="data-skeleton-line title" /><span className="data-skeleton-line medium" /></div>)}
+              </div>
+              <div className="performance-skeleton-table">
+                {Array.from({ length: 6 }, (_, index) => <div className="performance-skeleton-row" key={index}><span className="data-skeleton-line medium" /><span className="data-skeleton-line short" /><span className="data-skeleton-line medium" /></div>)}
+              </div>
+            </div>
+          )}
           {!loadingMine && myPerformance && (
             <>
               <div className="performance-control-row">
-                <label className="performance-term-picker">
-                  <span>COMPLETED TERM</span>
-                  <select value={selectedTerm} onChange={(event) => loadMyPerformance(event.target.value)}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <label className="p5-label" style={{ margin: 0 }}>COMPLETED TERM</label>
+                  <select className="p5-input" style={{ width: 'auto' }} value={selectedTerm} onChange={(event) => loadMyPerformance(event.target.value)}>
                     {myPerformance.available_terms.map((term) => (
                       <option key={term.term_code} value={term.term_code}>{term.display_name}</option>
                     ))}
                   </select>
-                </label>
-                <p><b>DATA POLICY</b> Only terms through <strong>{myPerformance.progress.latest_completed_term_code}</strong> can be edited. This rule is enforced by PostgreSQL too.</p>
+                </div>
+                <p className="performance-hint-text">
+                  Only terms up to <strong>{myPerformance.progress.latest_completed_term_code}</strong> can be edited.
+                </p>
               </div>
 
-              <div className="performance-summary-grid">
-                <article className="performance-summary-card featured">
-                  <span>TERM GPA</span><strong>{formatGpa(personalSummary.term_gpa)}</strong><small>Credit-weighted from saved results</small>
+              <div className="cr-courses-grid" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                <article className="cr-course-card performance-summary-card featured">
+                  <span>TERM GPA</span>
+                  <strong>{formatGpa(personalSummary.term_gpa)}</strong>
+                  <small>Credit-weighted</small>
                 </article>
-                <article className="performance-summary-card">
-                  <span>COURSES RECORDED</span><strong>{personalSummary.recorded_courses} / {personalSummary.expected_courses}</strong><small>{personalSummary.is_complete ? 'Complete submission' : 'Still in progress'}</small>
+                <article className="cr-course-card performance-summary-card">
+                  <span>COURSES RECORDED</span>
+                  <strong>{personalSummary.recorded_courses} / {personalSummary.expected_courses}</strong>
+                  <small>{personalSummary.is_complete ? 'Complete submission' : 'Still in progress'}</small>
                 </article>
-                <article className="performance-summary-card">
-                  <span>CREDITS RECORDED</span><strong>{formatGpa(personalSummary.recorded_credits)} / {formatGpa(personalSummary.expected_credits)}</strong><small>Each term uses its curriculum credit snapshot</small>
+                <article className="cr-course-card performance-summary-card">
+                  <span>CREDITS RECORDED</span>
+                  <strong>{formatGpa(personalSummary.recorded_credits)} / {formatGpa(personalSummary.expected_credits)}</strong>
+                  <small>Curriculum snapshot</small>
                 </article>
-              </div>
-
-              <div className="performance-note">
-                Your GPA is <strong>Σ(grade point × credit) / Σ(credit)</strong>. Batch GPA includes only students who saved every required course for that term.
               </div>
 
               <div className="performance-table-card">
-                <div className="performance-table-heading"><div><h3>{myPerformance.selected_term} COURSES</h3><p>These are your own batch curriculum placements, not a global course list.</p></div></div>
+                <div className="performance-table-heading">
+                  <div>
+                    <h3 style={{ margin: 0, fontFamily: 'var(--font-cr)', fontSize: '1.2rem' }}>{myPerformance.selected_term} COURSES</h3>
+                  </div>
+                </div>
                 <div className="performance-course-table" role="table">
-                  <div className="performance-course-row table-head" role="row"><span>COURSE</span><span>CREDITS</span><span>GRADE POINT</span><span>ACTION</span></div>
+                  <div className="performance-course-row table-head" role="row">
+                    <span>COURSE</span><span>CREDITS</span><span>GRADE POINT</span><span>ACTION</span>
+                  </div>
                   {myPerformance.courses.map((course) => {
                     const saved = course.grade_point !== null && course.grade_point !== undefined;
                     const saving = savingCourse === course.curriculum_course_id;
                     return (
                       <div className="performance-course-row" role="row" key={course.curriculum_course_id}>
-                        <div className="performance-course-name"><strong>{course.course_code}</strong><span>{course.title}</span></div>
+                        <div className="performance-course-name">
+                          <strong>{course.course_code}</strong>
+                          <span>{course.title}</span>
+                        </div>
                         <span>{formatGpa(course.credits)}</span>
-                        <select aria-label={`Grade point for ${course.course_code}`} value={gradeDrafts[course.curriculum_course_id] ?? ''} onChange={(event) => setGradeDrafts((current) => ({ ...current, [course.curriculum_course_id]: event.target.value }))}>
+                        <select className="p5-input" aria-label={`Grade point for ${course.course_code}`} value={gradeDrafts[course.curriculum_course_id] ?? ''} onChange={(event) => setGradeDrafts((current) => ({ ...current, [course.curriculum_course_id]: event.target.value }))}>
                           {GRADE_OPTIONS.map((option) => <option key={option.value || 'none'} value={option.value}>{option.label}</option>)}
                         </select>
                         <div className="performance-actions">
-                          <button type="button" className="performance-primary-button compact" disabled={saving} onClick={() => saveGrade(course)}>{saving ? 'SAVING...' : saved ? 'UPDATE' : 'SAVE'}</button>
-                          {saved && <button type="button" className="performance-remove-button" disabled={saving} onClick={() => deleteGrade(course)}>REMOVE</button>}
+                          <button type="button" className="p5-btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} disabled={saving} onClick={() => saveGrade(course)}>
+                            {saving ? 'SAVING...' : saved ? 'UPDATE' : 'SAVE'}
+                          </button>
+                          {saved && (
+                            <button type="button" className="p5-versions-btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} disabled={saving} onClick={() => deleteGrade(course)}>
+                              REMOVE
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -322,52 +396,93 @@ export default function Performance() {
 
       {activeView === 'batch' && (
         <>
-          <div className="performance-analysis-controls">
-            <div className="performance-control-intro"><span>COHORT EXPLORER</span><p>Compare only completed, anonymous term results.</p></div>
-            <label className="performance-term-picker"><span>BATCH</span><select value={analysisBatch} onChange={(event) => setAnalysisBatch(event.target.value)}>{batches.map((batch) => <option key={batch.batch_year} value={batch.batch_year}>BATCH {batch.batch_year}</option>)}</select></label>
-            <label className="performance-term-picker"><span>COMPLETED TERM</span><select value={analysisTerm} onChange={(event) => setAnalysisTerm(event.target.value)}>{analysisTerms.map((term) => <option key={term.term_code} value={term.term_code}>{term.display_name}</option>)}</select></label>
+          <div className="performance-control-row">
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <label className="p5-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                BATCH
+                <select className="p5-input" style={{ width: 'auto' }} value={analysisBatch} onChange={(event) => setAnalysisBatch(event.target.value)}>
+                  {batches.map((batch) => <option key={batch.batch_year} value={batch.batch_year}>BATCH {batch.batch_year}</option>)}
+                </select>
+              </label>
+              <label className="p5-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                COMPLETED TERM
+                <select className="p5-input" style={{ width: 'auto' }} value={analysisTerm} onChange={(event) => setAnalysisTerm(event.target.value)}>
+                  {analysisTerms.map((term) => <option key={term.term_code} value={term.term_code}>{term.display_name}</option>)}
+                </select>
+              </label>
+            </div>
+            <p className="performance-hint-text">Compare completed, anonymous term results.</p>
           </div>
 
-          {loadingBatch && <p className="performance-loading">Loading anonymous batch analysis...</p>}
+          {loadingBatch && (
+            <div className="performance-loading-skeleton" aria-label="Loading batch analysis">
+              <div className="performance-skeleton-summary">
+                {Array.from({ length: 3 }, (_, index) => <div className="cr-course-card data-skeleton-card" key={index}><span className="data-skeleton-line short" /><span className="data-skeleton-line title" /><span className="data-skeleton-line medium" /></div>)}
+              </div>
+              <div className="performance-skeleton-table">
+                {Array.from({ length: 6 }, (_, index) => <div className="performance-skeleton-row" key={index}><span className="data-skeleton-line medium" /><span className="data-skeleton-line short" /><span className="data-skeleton-line medium" /></div>)}
+              </div>
+            </div>
+          )}
           {!loadingBatch && batchStats && (
             <>
-              <div className="performance-batch-intro">
-                <p className="performance-kicker">ANONYMOUS AGGREGATE</p>
-                <h3>BATCH {batchStats.selection.batch_year} · TERM {batchStats.selection.term_code}</h3>
-                <p>There are no names, IDs, or individual grades here. Every figure uses the same complete-term cohort.</p>
-              </div>
-
               {!analyticsVisible && (
-                <div className="performance-privacy-note">
+                <div className="p5-error" style={{ borderColor: 'var(--cr-text-muted)', color: 'var(--cr-text-muted)', background: 'var(--cr-dark-gray)', marginTop: '1rem' }}>
                   Analysis unlocks after at least {batchStats.availability.minimum_anonymous_cohort} students complete all {coverage.expected_courses} courses. Right now, {coverage.completed_students} complete submissions are available.
                 </div>
               )}
 
-              <div className="performance-summary-grid">
-                <article className="performance-summary-card featured"><span>BATCH AVERAGE GPA</span><strong>{analyticsVisible ? formatGpa(batchSummary.average_gpa) : 'LOCKED'}</strong><small>{analyticsVisible ? 'Complete submissions only' : 'Privacy threshold not reached'}</small></article>
-                <article className="performance-summary-card"><span>SUBMISSION COVERAGE</span><strong>{coverage.completed_students} / {coverage.registered_students}</strong><small>{coverage.students_with_any_data} started · {coverage.expected_courses} courses required</small></article>
-                <article className="performance-summary-card"><span>MEDIAN · SPREAD</span><strong>{analyticsVisible ? `${formatGpa(batchSummary.median_gpa)} · ${formatGpa(batchSummary.standard_deviation_gpa)}` : 'LOCKED'}</strong><small>Median GPA · standard deviation</small></article>
+              <div className="cr-courses-grid" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                <article className="cr-course-card performance-summary-card featured">
+                  <span>BATCH AVERAGE GPA</span>
+                  <strong>{analyticsVisible ? formatGpa(batchSummary.average_gpa) : 'LOCKED'}</strong>
+                  <small>{analyticsVisible ? 'Complete submissions only' : 'Threshold not met'}</small>
+                </article>
+                <article className="cr-course-card performance-summary-card">
+                  <span>SUBMISSION COVERAGE</span>
+                  <strong>{coverage.completed_students} / {coverage.registered_students}</strong>
+                  <small>{coverage.expected_courses} courses required</small>
+                </article>
+                <article className="cr-course-card performance-summary-card">
+                  <span>MEDIAN · SPREAD</span>
+                  <strong>{analyticsVisible ? `${formatGpa(batchSummary.median_gpa)} · ${formatGpa(batchSummary.standard_deviation_gpa)}` : 'LOCKED'}</strong>
+                  <small>Median GPA · Std Dev</small>
+                </article>
               </div>
 
               {analyticsVisible && (
                 <>
-                  <div className="performance-distribution-card">
-                    <div><p className="performance-kicker">GPA DISTRIBUTION</p><h3>Middle 50% of the complete cohort</h3></div>
+                  <div className="performance-table-card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <span className="cr-anilist-tag">GPA DISTRIBUTION</span>
+                      <h3 style={{ margin: '0.25rem 0', fontFamily: 'var(--font-cr)', fontSize: '1.2rem' }}>Middle 50% of the cohort</h3>
+                    </div>
+                    
                     <div className="performance-range-scale" aria-label="Batch GPA quartile range">
                       <span className="range-fill" style={{ left: `${(Number(batchSummary.first_quartile_gpa) / 4) * 100}%`, width: `${((Number(batchSummary.third_quartile_gpa) - Number(batchSummary.first_quartile_gpa)) / 4) * 100}%` }} />
                       <i style={{ left: `${(Number(batchSummary.median_gpa) / 4) * 100}%` }} title={`Median ${formatGpa(batchSummary.median_gpa)}`} />
                     </div>
-                    <div className="performance-range-labels"><span>Q1 {formatGpa(batchSummary.first_quartile_gpa)}</span><span>Median {formatGpa(batchSummary.median_gpa)}</span><span>Q3 {formatGpa(batchSummary.third_quartile_gpa)}</span></div>
+                    <div className="performance-range-labels">
+                      <span>Q1 {formatGpa(batchSummary.first_quartile_gpa)}</span>
+                      <span>Median {formatGpa(batchSummary.median_gpa)}</span>
+                      <span>Q3 {formatGpa(batchSummary.third_quartile_gpa)}</span>
+                    </div>
                   </div>
 
-                  <div className="performance-chart-card">
-                    <div className="performance-table-heading"><div><h3>COURSE AVERAGES</h3><p>Lower average means lower aggregate performance in this completed cohort; it is not a judgement about course difficulty.</p></div></div>
-                    <div className="performance-bar-list">
+                  <div className="performance-table-card">
+                    <div className="performance-table-heading">
+                      <div>
+                        <h3 style={{ margin: 0, fontFamily: 'var(--font-cr)', fontSize: '1.2rem' }}>COURSE AVERAGES</h3>
+                      </div>
+                    </div>
+                    <div className="performance-bar-list" style={{ padding: '1.15rem' }}>
                       {[...batchStats.courses].sort((a, b) => Number(a.average_grade_point) - Number(b.average_grade_point)).map((course) => (
                         <div className="performance-bar-row" key={course.curriculum_course_id}>
-                          <div><strong>{course.course_code}</strong><span>{course.title}</span></div>
-                          <div className="performance-bar-track"><span style={{ width: `${(Number(course.average_grade_point) / 4) * 100}%` }} /></div>
-                          <strong>{formatGpa(course.average_grade_point)}</strong>
+                          <div><strong>{course.course_code}</strong> <span style={{ color: 'var(--cr-text-muted)', fontSize: '0.8rem' }}>{course.title}</span></div>
+                          <div className="performance-bar-track">
+                            <span style={{ width: `${(Number(course.average_grade_point) / 4) * 100}%` }} />
+                          </div>
+                          <strong style={{ fontFamily: 'var(--font-cr)', fontSize: '1.1rem' }}>{formatGpa(course.average_grade_point)}</strong>
                         </div>
                       ))}
                     </div>
@@ -375,13 +490,22 @@ export default function Performance() {
                 </>
               )}
 
-              <div className="performance-table-card">
-                <div className="performance-table-heading"><div><h3>COURSE-WISE BATCH STATS</h3><p>Pass rate, median, and grade counts are hidden together until the privacy threshold is met.</p></div></div>
+              <div className="performance-table-card" style={{ marginTop: '1.5rem' }}>
+                <div className="performance-table-heading">
+                  <div>
+                    <h3 style={{ margin: 0, fontFamily: 'var(--font-cr)', fontSize: '1.2rem' }}>COURSE-WISE BATCH STATS</h3>
+                  </div>
+                </div>
                 <div className="performance-course-table batch" role="table">
-                  <div className="performance-course-row batch-head table-head" role="row"><span>COURSE</span><span>AVERAGE GP</span><span>MEDIAN / PASS RATE</span><span>F / A+ COUNT</span></div>
+                  <div className="performance-course-row batch-head table-head" role="row">
+                    <span>COURSE</span><span>AVERAGE GP</span><span>MEDIAN / PASS RATE</span><span>F / A+ COUNT</span>
+                  </div>
                   {batchStats.courses.map((course) => (
                     <div className="performance-course-row batch-row" role="row" key={course.curriculum_course_id}>
-                      <div className="performance-course-name"><strong>{course.course_code}</strong><span>{course.title}</span></div>
+                      <div className="performance-course-name">
+                        <strong>{course.course_code}</strong>
+                        <span>{course.title}</span>
+                      </div>
                       <strong>{formatGpa(course.average_grade_point)}</strong>
                       <span>{formatGpa(course.median_grade_point)} / {course.pass_rate_percent == null ? '—' : `${formatGpa(course.pass_rate_percent)}%`}</span>
                       <span>{course.fail_count ?? '—'} / {course.a_plus_count ?? '—'}</span>

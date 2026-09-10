@@ -167,7 +167,7 @@
 /* Inputs & Text Controls */
 .p5-input,
 .p5-sort-select {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-p5);
   font-weight: 500;
   background: #111;
   border: 1px solid var(--cr-card-border);
@@ -188,6 +188,7 @@
 
 /* Number input spin-arrow styling (difficulty / usefulness scores) */
 .p5-input[type='number'] {
+  appearance: textfield;
   -moz-appearance: textfield;
 }
 
@@ -209,7 +210,7 @@
    keystroke — the box itself grows taller as you type, pushing
    the Post/Cancel buttons below it further down the page. */
 textarea.p5-input {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-p5);
   font-weight: 400;
   resize: none;
   overflow: hidden;
@@ -248,7 +249,7 @@ textarea.p5-input {
 }
 
 .p5-file-name {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-p5);
   font-size: 0.9rem;
   color: var(--cr-text-muted);
   overflow: hidden;
@@ -428,6 +429,8 @@ textarea.p5-input {
   z-index: 1000;
   padding: 1.5rem;
   box-sizing: border-box;
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .cr-anilist-container {
@@ -437,6 +440,8 @@ textarea.p5-input {
   width: 100%;
   max-width: 750px;
   max-height: 85vh;
+  height: min(85vh, 720px);
+  min-height: 0;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -483,8 +488,11 @@ textarea.p5-input {
 }
 
 .cr-anilist-reviews-list {
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 1.5rem;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -525,6 +533,13 @@ textarea.p5-input {
   font-family: var(--font-cr);
   font-size: 1.2rem;
   border-radius: 4px;
+}
+
+.cr-anilist-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .cr-anilist-user-info {
@@ -586,7 +601,7 @@ textarea.p5-input {
 }
 
 .cr-anilist-body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-p5);
   font-weight: 400;
   font-size: 0.95rem;
   line-height: 1.5;
@@ -803,6 +818,8 @@ textarea.p5-input {
   max-height: 220px;
   overflow-y: auto;
   position: absolute;
+  top: 100%;
+  left: 0;
   width: 100%;
   z-index: 100; /* Forces it to hover OVER the other form fields */
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
@@ -822,7 +839,7 @@ textarea.p5-input {
   padding: 0.6rem 0.85rem;
   text-align: left;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-p5);
   font-size: 0.85rem;
 }
 
@@ -842,7 +859,7 @@ textarea.p5-input {
 
 .p5-parent-suggestion-meta {
   flex-shrink: 0;
-  color: var(--cr-red);
+  color: #ff3333;
   font-family: var(--font-cr);
   font-weight: 700;
   font-size: 0.75rem;
@@ -852,4 +869,12 @@ textarea.p5-input {
   font-size: 0.8rem;
   color: var(--cr-text-muted);
   margin: 0.5rem 0 0 0;
+}
+
+.cr-report-success {
+  font-family: var(--font-cr);
+  color: #4caf50;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }

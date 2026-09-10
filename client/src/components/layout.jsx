@@ -14,6 +14,8 @@ const BREADCRUMBS = {
   '/profile': 'SYSTEM // MY_PROFILE'
 };
 
+const SERVER_ORIGIN = 'http://localhost:5000';
+
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -176,12 +178,12 @@ export default function Layout() {
 
                 <div 
                   className="p5-profile-widget" 
-                  onClick={() => navigate('/profile')}
+                  onClick={() => navigate(user?.user_id ? `/profile/${user.user_id}` : '/login')}
                   title="View Profile"
                 >
                   <div className="p5-avatar-frame">
                     <img
-                      src={user.avatar_path ? `http://localhost:5000${user.avatar_path}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=b91522&color=fff&bold=true`}
+                      src={user.avatar_path ? `${SERVER_ORIGIN}${user.avatar_path}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=b91522&color=fff&bold=true`}
                       alt="User Avatar"
                       className="p5-avatar-img"
                     />
@@ -201,7 +203,9 @@ export default function Layout() {
         </header>
 
         <main className="p5-content">
-          <Outlet context={{ user, unreadNotifications, refreshUnreadCount }} />
+          <div key={location.pathname} className="p5-route-transition">
+            <Outlet context={{ user, unreadNotifications, refreshUnreadCount }} />
+          </div>
         </main>
       </div>
     </div>

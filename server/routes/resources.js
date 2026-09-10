@@ -16,6 +16,7 @@ const {
   deleteVote,
   getVersionHistory
 } = require('../models/resources');
+const { getCourses } = require('../models/courseReviews');
 
 // ---------------------------------------------------------------------
 // Multer setup
@@ -60,6 +61,7 @@ const upload = multer({
 const RESOURCE_TYPES = ['Slides', 'Previous Year Questions', 'Notes', 'Lab reports'];
 const SORT_OPTIONS = ['default', 'votes', 'downloads'];
 const ORDER_OPTIONS = ['asc', 'desc'];
+const COURSE_SORT_OPTIONS = ['rating', 'difficulty', 'name'];
 
 const resourceSchema = Joi.object({
   title: Joi.string().min(3).max(255).trim().required(),
@@ -112,6 +114,32 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
+// GET /api/resources/courses
+// Course search used by the upload form's course picker.
+router.get('/courses', async (req, res) => {
+  try {
+    const { search, dept_code, sortBy, order } = req.query;
+
+    if (sortBy && !COURSE_SORT_OPTIONS.includes(sortBy)) {
+      return res.status(400).json({
+        message: `Invalid sortBy. Must be one of: ${COURSE_SORT_OPTIONS.join(', ')}`
+      });
+    }
+
+    if (order && !ORDER_OPTIONS.includes(order)) {
+      return res.status(400).json({
+        message: `Invalid order. Must be one of: ${ORDER_OPTIONS.join(', ')}`
+      });
+    }
+
+    const courses = await getCourses({ search, deptCode: dept_code, sortBy, order });
+    return res.json(courses);
+  } catch (err) {
+    console.error('Error fetching resource course suggestions:', err);
+    return res.status(500).json({ message: 'Server error while fetching courses' });
+  }
+});
+
 // GET /api/resources/:id
 // Fetch a single resource's details
 router.get('/:id', optionalAuth, async (req, res) => {
@@ -136,6 +164,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
     res.status(500).json({ message: 'Server error while getting resource' });
   }
 });
+
 
 // GET /api/resources/:id/versions
 // Return the full version history (ancestors) of a resource, following
@@ -305,5 +334,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Server error while deleting resource' });
   }
 });
+
+
 
 module.exports = router;

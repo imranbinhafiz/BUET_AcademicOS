@@ -83,7 +83,7 @@
   padding-top: 1rem;
   border-top: 1px solid #151515;
   color: #555555;
-  font-family: monospace;
+  font-family: var(--font-p5, 'Rajdhani', sans-serif);
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 1px;

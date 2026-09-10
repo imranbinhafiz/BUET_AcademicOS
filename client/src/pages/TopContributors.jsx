@@ -4,6 +4,7 @@ import './TopContributors.css';
 
 const API_BASE = 'http://localhost:5000/api';
 const LEADERBOARD_API = `${API_BASE}/top-contributors`;
+const SERVER_ORIGIN = API_BASE.replace('/api', '');
 
 export default function TopContributors() {
   const [leaders, setLeaders] = useState([]);
@@ -45,7 +46,18 @@ export default function TopContributors() {
         <h2>TOP ACADEMIC CONTRIBUTORS</h2>
       </div>
 
-      {loading && <p className="p5-empty-state">Loading leaderboard...</p>}
+      {loading && (
+        <div className="p5-leaderboard-table data-skeleton-leaderboard" aria-label="Loading contributors">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div className="p5-leader-row data-skeleton-row" key={index}>
+              <span className="data-skeleton-circle" />
+              <span className="data-skeleton-line name" />
+              <span className="data-skeleton-line stat" />
+              <span className="data-skeleton-line points" />
+            </div>
+          ))}
+        </div>
+      )}
       {error && <p className="p5-error">{error}</p>}
 
       {!loading && !error && (
@@ -62,8 +74,8 @@ export default function TopContributors() {
               </span>
 
               <span className="p5-leader-avatar">
-                {item.avatar_url ? (
-                  <img src={item.avatar_url} alt={item.name} />
+                {item.avatar_path ? (
+                  <img src={`${SERVER_ORIGIN}${item.avatar_path}`} alt={item.name} />
                 ) : (
                   <span className="p5-leader-avatar-fallback">
                     {item.name ? item.name.charAt(0).toUpperCase() : '?'}

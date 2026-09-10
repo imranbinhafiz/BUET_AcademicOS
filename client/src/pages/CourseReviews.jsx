@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import './CourseReviews.css';
 
 const API_BASE = 'http://localhost:5000/api/course-reviews';
@@ -6,6 +7,7 @@ const COURSES_API = `${API_BASE}/courses`;
 const REVIEWS_API = `${API_BASE}/reviews`;
 const DEPARTMENTS_API = `${API_BASE}/departments`;
 const REPORTS_API = `${API_BASE}/reports`;
+const SERVER_ORIGIN = API_BASE.replace('/api/course-reviews', '');
 
 function getCurrentUser() {
   try {
@@ -152,6 +154,7 @@ export default function CourseReviews() {
         >
           <option value="name">Sort: Default</option>
           <option value="rating">Sort: Usefulness</option>
+          <option value="difficulty">Sort: Difficulty</option>
         </select>
 
         <button
@@ -169,7 +172,18 @@ export default function CourseReviews() {
         )}
       </div>
 
-      {loading && <p className="p5-empty-state">Loading courses...</p>}
+      {loading && (
+        <div className="cr-courses-grid data-skeleton-grid" aria-label="Loading courses">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div className="cr-course-card data-skeleton-card" key={index}>
+              <span className="data-skeleton-line short" />
+              <span className="data-skeleton-line title" />
+              <span className="data-skeleton-line medium" />
+              <span className="data-skeleton-line footer" />
+            </div>
+          ))}
+        </div>
+      )}
       {error && <p className="p5-error">{error}</p>}
 
       {!loading && !error && (
@@ -406,23 +420,23 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
               ✕
             </button>
           )}
-        </div>
-        {showCourseSuggestions && !selectedCourse && courseMatches.length > 0 && (
-          <ul className="p5-parent-suggestions">
-            {courseMatches.map((c) => (
-              <li key={c.course_code}>
-                <button
-                  type="button"
-                  className="p5-parent-suggestion-item"
-                  onClick={() => pickCourse(c)}
-                >
-                  <span className="p5-parent-suggestion-title">{c.title}</span>
-                  <span className="p5-parent-suggestion-meta">{c.course_code}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+            {showCourseSuggestions && !selectedCourse && courseMatches.length > 0 && (
+              <ul className="p5-parent-suggestions">
+                {courseMatches.map((c) => (
+                  <li key={c.course_code}>
+                    <button
+                      type="button"
+                      className="p5-parent-suggestion-item"
+                      onClick={() => pickCourse(c)}
+                    >
+                      <span className="p5-parent-suggestion-title">{c.title}</span>
+                      <span className="p5-parent-suggestion-meta">{c.course_code}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         {selectedCourse && (
           <p className="p5-parent-selected-note">
             Selected: {selectedCourse.course_code} — {selectedCourse.title}
@@ -548,20 +562,31 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
   );
 }
 
-function CourseReviewsModal({ courseCode, currentUser, onClose }) {
+export function CourseReviewsModal({ courseCode, reviewId, currentUser, onClose }) {
   const [downloadingId, setDownloadingId] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
   const [reportingId, setReportingId] = useState(null);
   const [reportReason, setReportReason] = useState('');
+  // NEW: State to hold the validation error message
+  const [reportError, setReportError] = useState(''); 
 
+  const [reportedReviews, setReportedReviews] = useState(new Set());
   const [expandedReviews, setExpandedReviews] = useState(new Set());
   const MAX_REVIEW_LENGTH = 250;
 
-  // NEW: State to track both the sorting method AND the direction
   const [sortBy, setSortBy] = useState('date');
   const [order, setOrder] = useState('desc');
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -582,7 +607,7 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
           throw new Error(data.message || 'Failed to load reviews');
         }
 
-        setReviews(data);
+        setReviews(reviewId ? data.filter((review) => String(review.review_id) === String(reviewId)) : data);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -644,16 +669,11 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
         try {
           const data = await response.json();
           message = data.message || message;
-        } catch {
-          // res.download() never sent JSON on failure paths that don't hit this branch anyway
-        }
+        } catch { }
         throw new Error(message);
       }
 
       const blob = await response.blob();
-
-      // Pull the filename the server set via res.download()'s Content-Disposition
-      // header, falling back to something generic if it's ever missing.
       const disposition = response.headers.get('Content-Disposition') || '';
       const match = disposition.match(/filename="?([^"]+)"?/);
       const filename = match ? match[1] : `review-${reviewId}-attachment`;
@@ -674,7 +694,12 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
   };
 
   const handleReportSubmit = async (reviewId) => {
-    if (!reportReason.trim()) return;
+    if (!reportReason.trim()) {
+      setReportError('Please enter a reason for reporting.');
+      return;
+    }
+
+    setReportError(''); // Clear any previous errors
 
     const token = localStorage.getItem('token');
     try {
@@ -696,11 +721,13 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
         throw new Error(data.message || 'Failed to report');
       }
 
-      alert('Report submitted successfully. A moderator will review it.');
+      setReportedReviews((prev) => new Set(prev).add(reviewId));
       setReportingId(null);
       setReportReason('');
+      setReportError('');
     } catch (err) {
-      alert(err.message);
+      // UPDATED: Catch the error and set it to state instead of alerting
+      setReportError(err.message);
     }
   };
 
@@ -716,7 +743,6 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
     });
   };
 
-  // UPDATED: Dynamic calculation applies ASC or DESC based on the button state
   const sortedReviews = [...reviews].sort((a, b) => {
     let diff = 0;
     if (sortBy === 'date') {
@@ -728,11 +754,11 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
     } else if (sortBy === 'difficulty') {
       diff = Number(b.difficulty || 0) - Number(a.difficulty || 0);
     }
-    // Multiply by -1 to flip the array if the user wants Ascending
     return order === 'asc' ? -diff : diff;
   });
 
-  return (
+  return createPortal(
+    (
     <div className="cr-anilist-overlay" onClick={onClose}>
       <div className="cr-anilist-container" onClick={(e) => e.stopPropagation()}>
         <button className="cr-anilist-close-btn" onClick={onClose}>
@@ -753,7 +779,6 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
-                {/* Labels modified slightly to make sense in both ASC and DESC */}
                 <option value="date">Sort: Newest</option>
                 <option value="votes">Sort: Votes</option>
                 <option value="usefulness">Sort: Usefulness</option>
@@ -763,7 +788,7 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
               <button
                 type="button"
                 className="p5-order-btn"
-                style={{ padding: '0.4rem 0.85rem' }} // Slimmed down to match the input height
+                style={{ padding: '0.4rem 0.85rem' }}
                 onClick={() => setOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
               >
                 {order === 'asc' ? '↑ ASC' : '↓ DESC'}
@@ -773,7 +798,17 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
         </div>
 
         <div className="cr-anilist-reviews-list">
-          {loading && <p className="p5-empty-state">Loading reviews...</p>}
+          {loading && (
+            <div className="data-skeleton-review-list" aria-label="Loading reviews">
+              {Array.from({ length: 3 }, (_, index) => (
+                <div className="cr-anilist-card data-skeleton-review" key={index}>
+                  <span className="data-skeleton-line medium" />
+                  <span className="data-skeleton-line paragraph" />
+                  <span className="data-skeleton-line paragraph short" />
+                </div>
+              ))}
+            </div>
+          )}
           {error && <p className="p5-error">{error}</p>}
 
           {!loading && !error && reviews.length === 0 && (
@@ -784,7 +819,6 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
             !error &&
             sortedReviews.map((review) => {
               const isExpanded = expandedReviews.has(review.review_id);
-
               const lines = review.comment.split('\n');
               const isLong = review.comment.length > MAX_REVIEW_LENGTH || lines.length > 4;
 
@@ -803,7 +837,11 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
                   <div className="cr-anilist-user-bar">
                     <div className="cr-anilist-author">
                       <div className="cr-anilist-avatar">
-                        {review.reviewer_name ? review.reviewer_name.charAt(0).toUpperCase() : 'A'}
+                        {review.reviewer_avatar_path ? (
+                          <img src={`${SERVER_ORIGIN}${review.reviewer_avatar_path}`} alt={review.reviewer_name || 'Reviewer'} />
+                        ) : (
+                          review.reviewer_name ? review.reviewer_name.charAt(0).toUpperCase() : 'A'
+                        )}
                       </div>
                       <div className="cr-anilist-user-info">
                         <span className="cr-author-name">{review.reviewer_name || 'Anonymous'}</span>
@@ -893,22 +931,48 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
                   </div>
 
                   <div className="cr-anilist-actions">
-                    {currentUser && reportingId === review.review_id ? (
-                      <div className="cr-report-box">
-                        <input
-                          type="text"
-                          className="p5-input"
-                          placeholder="Reason for reporting..."
-                          value={reportReason}
-                          onChange={(e) => setReportReason(e.target.value)}
-                          autoFocus
-                        />
-                        <button className="cr-submit-btn" onClick={() => handleReportSubmit(review.review_id)}>SUBMIT</button>
-                        <button className="p5-versions-btn" onClick={() => setReportingId(null)}>CANCEL</button>
+                    {reportedReviews.has(review.review_id) ? (
+                      <span className="cr-report-success">
+                        ✅ Report submitted. A moderator will review it.
+                      </span>
+                    ) : currentUser && reportingId === review.review_id ? (
+                      
+                      /* UPDATED: Wrapped the report box in a column to display the error text below it */
+                      <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.4rem' }}>
+                        <div className="cr-report-box">
+                          <input
+                            type="text"
+                            className="p5-input"
+                            placeholder="Reason for reporting..."
+                            value={reportReason}
+                            onChange={(e) => {
+                              setReportReason(e.target.value);
+                              if (reportError) setReportError(''); // Clear error when they start typing
+                            }}
+                            autoFocus
+                          />
+                          <button className="cr-submit-btn" onClick={() => handleReportSubmit(review.review_id)}>SUBMIT</button>
+                          <button className="p5-versions-btn" onClick={() => {
+                            setReportingId(null);
+                            setReportError(''); // Clear error on cancel
+                          }}>CANCEL</button>
+                        </div>
+                        
+                        {/* Display the validation error if it exists */}
+                        {reportError && (
+                          <span style={{ color: '#ff6b6b', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                            {reportError}
+                          </span>
+                        )}
                       </div>
+
                     ) : (
                       currentUser && (
-                        <button className="cr-report-btn" onClick={() => setReportingId(review.review_id)}>
+                        <button className="cr-report-btn" onClick={() => {
+                          setReportingId(review.review_id);
+                          setReportReason('');
+                          setReportError(''); // Clear previous states when opening
+                        }}>
                           ⚑ Report
                         </button>
                       )
@@ -920,5 +984,7 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
         </div>
       </div>
     </div>
+    ),
+    document.body
   );
 }

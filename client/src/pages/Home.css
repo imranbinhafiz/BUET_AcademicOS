@@ -11,7 +11,7 @@
 
   /* FONT STACKS */
   --font-p5: 'Rajdhani', 'Trebuchet MS', sans-serif;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: var(--font-p5);
 }
 
 /* LAYOUT CONTAINER */
@@ -30,6 +30,11 @@
   border-right: 2px solid var(--p5-border);
   display: flex;
   flex-direction: column;
+  flex: 0 0 260px;
+  align-self: flex-start;
+  position: sticky;
+  top: 0;
+  height: 100vh;
   padding: 1.5rem 1rem;
   box-sizing: border-box;
 }

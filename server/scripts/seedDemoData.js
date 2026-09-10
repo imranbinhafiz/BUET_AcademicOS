@@ -119,7 +119,7 @@ async function ensureTeacher(client, teacher) {
 async function ensureOffering(client, courseCode, teacherId) {
   const semester = '2026 Demo Term';
   const existing = await client.query(
-    `SELECT offering_id FROM offering
+    `SELECT offering_id FROM course_offerings
      WHERE semester = $1 AND course_code = $2 AND teacher_id = $3
      ORDER BY offering_id LIMIT 1`,
     [semester, courseCode, teacherId]
@@ -127,7 +127,7 @@ async function ensureOffering(client, courseCode, teacherId) {
   if (existing.rowCount) return existing.rows[0].offering_id;
 
   const inserted = await client.query(
-    `INSERT INTO offering (semester, course_code, teacher_id)
+    `INSERT INTO course_offerings (semester, course_code, teacher_id)
      VALUES ($1, $2, $3) RETURNING offering_id`,
     [semester, courseCode, teacherId]
   );
@@ -171,7 +171,7 @@ async function main() {
       await client.query('DELETE FROM reports WHERE reporter_user_id = ANY($1::int[])', [legacyUserIds]);
       await client.query('DELETE FROM notifications WHERE user_id = ANY($1::int[])', [legacyUserIds]);
       await client.query('DELETE FROM coursereviewvote WHERE user_id = ANY($1::int[])', [legacyUserIds]);
-      await client.query('DELETE FROM coursereview WHERE user_id = ANY($1::int[])', [legacyUserIds]);
+      await client.query('DELETE FROM coursereviews WHERE user_id = ANY($1::int[])', [legacyUserIds]);
       await client.query('DELETE FROM user_course_performance WHERE user_id = ANY($1::int[])', [legacyUserIds]);
       await client.query('DELETE FROM users WHERE user_id = ANY($1::int[])', [legacyUserIds]);
     }
@@ -216,7 +216,7 @@ async function main() {
     await client.query('DELETE FROM reports WHERE reporter_user_id = ANY($1::int[])', [demoUserIds]);
     await client.query('DELETE FROM notifications WHERE user_id = ANY($1::int[])', [demoUserIds]);
     await client.query('DELETE FROM coursereviewvote WHERE user_id = ANY($1::int[])', [demoUserIds]);
-    await client.query('DELETE FROM coursereview WHERE user_id = ANY($1::int[])', [demoUserIds]);
+    await client.query('DELETE FROM coursereviews WHERE user_id = ANY($1::int[])', [demoUserIds]);
 
     const curriculum = await client.query(
       `SELECT curriculum_id FROM curricula
@@ -293,7 +293,7 @@ async function main() {
     const insertedReviews = [];
     for (const [courseCode, studentIndex, difficulty, prereqUse, comment] of reviewSeeds) {
       const result = await client.query(
-        `INSERT INTO coursereview (difficulty, prereq_use, comment, user_id, course_code, offering_id)
+        `INSERT INTO coursereviews (difficulty, prereq_use, comment, user_id, course_code, offering_id)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING review_id, user_id, course_code`,
         [difficulty, prereqUse, `[Demo seed] ${comment}`, students[studentIndex].user_id, courseCode, offeringIds.get(courseCode)]

@@ -54,18 +54,10 @@ async function markNotificationRead(userId, notificationId) {
 
 async function markAllNotificationsRead(userId) {
   const result = await db.query(
-    `WITH updated AS (
-       UPDATE notifications
-       SET is_read = TRUE
-       WHERE user_id = $1
-         AND is_read = FALSE
-       RETURNING notification_id
-     )
-     SELECT COUNT(*)::integer AS updated_count FROM updated`,
+    'DELETE FROM notifications WHERE user_id = $1 RETURNING *',
     [userId]
   );
-
-  return result.rows[0].updated_count;
+  return result.rowCount; // Returns how many rows were wiped
 }
 
 module.exports = {

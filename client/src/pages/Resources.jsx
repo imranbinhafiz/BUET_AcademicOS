@@ -1,8 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import './Resources.css';
 
-// These must match the chk_resource_type CHECK constraint on the
-// `resources` table in the database (see schema.sql).
 const RESOURCE_TYPES = [
   { type: 'Slides', icon: '📊' },
   { type: 'Previous Year Questions', icon: '📝' },
@@ -11,11 +9,8 @@ const RESOURCE_TYPES = [
 ];
 
 const API_BASE = 'http://localhost:5000/api/resources';
-const COURSES_API = 'http://localhost:5000/api/courses';
+const COURSES_API = `${API_BASE}/courses`;
 
-// Reads the logged-in user's ID from what Auth.jsx already saves to
-// localStorage at login — used to restrict the parent-version search to
-// the current user's own uploads.
 function getCurrentUserId() {
   try {
     const stored = localStorage.getItem('user');
@@ -34,18 +29,11 @@ export default function Resources() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Version history (previous versions of a resource, via parent_res_id)
   const [expandedVersionsFor, setExpandedVersionsFor] = useState(null);
-  const [versionHistory, setVersionHistory] = useState({}); // { [res_id]: [...] }
+  const [versionHistory, setVersionHistory] = useState({});
   const [loadingVersions, setLoadingVersions] = useState(false);
 
-  // An unfiltered snapshot of all resources, fetched once, used only to
-  // populate the parent-resource suggestions below — independent of
-  // whatever filters are currently applied to the main list.
   const [allResources, setAllResources] = useState([]);
-
-  // Real course catalog, fetched from the database (not derived from
-  // whichever courses happen to already have resources uploaded).
   const [courses, setCourses] = useState([]);
 
   const [showUploadForm, setShowUploadForm] = useState(false);
@@ -58,47 +46,82 @@ export default function Resources() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
-  // Parent-resource (previous version) picker state
-  const [parentQuery, setParentQuery] = useState('');
-  const [selectedParent, setSelectedParent] = useState(null); // { res_id, title } or null
-  const [showParentSuggestions, setShowParentSuggestions] = useState(false);
+  // Course dropdown state & ref (matches CourseReviews.jsx's debounced
+  // server-search pattern — courseMatches is populated by a fetch to
+  // COURSES_API?search=..., not filtered client-side from a preloaded list)
+  const [courseQuery, setCourseQuery] = useState('');
+  const [courseMatches, setCourseMatches] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [showCourseSuggestions, setShowCourseSuggestions] = useState(false);
+  const courseBoxRef = useRef(null);
 
-  // Fetch the full unfiltered list once, for the parent-resource search.
+  // Parent resource picker state & ref
+  const [parentQuery, setParentQuery] = useState('');
+  const [selectedParent, setSelectedParent] = useState(null);
+  const [showParentSuggestions, setShowParentSuggestions] = useState(false);
+  const parentBoxRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (courseBoxRef.current && !courseBoxRef.current.contains(e.target)) {
+        setShowCourseSuggestions(false);
+      }
+      if (parentBoxRef.current && !parentBoxRef.current.contains(e.target)) {
+        setShowParentSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   useEffect(() => {
     fetch(API_BASE)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setAllResources(data);
       })
-      .catch(() => {
-        // Non-critical if this fails — the parent picker just has fewer
-        // suggestions; the main list still works.
-      });
+      .catch(() => {});
   }, []);
 
-  // Fetch the real course catalog once, for the course search bar and
-  // the upload form's course code field.
+  // Still preloaded once — used for the "search by course code" datalist
+  // further down the page, which is a separate feature from the upload
+  // form's course picker below.
   useEffect(() => {
     fetch(COURSES_API)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setCourses(data);
       })
-      .catch(() => {
-        // Non-critical — inputs fall back to plain free-typed text.
-      });
+      .catch(() => {});
   }, []);
 
-  // Refetch the visible list whenever the type filter or course search
-  // changes, debounced so we're not firing a request on every keystroke.
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fetchResources();
     }, 300);
-
     return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeType, courseSearch, sortBy, order]);
+
+  // Debounced course search for the upload form's course picker — mirrors
+  // WriteReviewForm's course dropdown in CourseReviews.jsx exactly: query
+  // the server as the user types instead of filtering a preloaded array.
+  useEffect(() => {
+    if (selectedCourse) return;
+    const q = courseQuery.trim();
+    if (!q) {
+      setCourseMatches([]);
+      return;
+    }
+    const timeoutId = setTimeout(() => {
+      fetch(`${COURSES_API}?search=${encodeURIComponent(q)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setCourseMatches(data.slice(0, 8));
+        })
+        .catch(() => setCourseMatches([]));
+    }, 250);
+    return () => clearTimeout(timeoutId);
+  }, [courseQuery, selectedCourse]);
 
   const fetchResources = async () => {
     setLoading(true);
@@ -129,8 +152,6 @@ export default function Resources() {
     setActiveType((prev) => (prev === type ? null : type));
   };
 
-  // Unique course codes come from the real course catalog now, not from
-  // whichever courses happen to have existing resources.
   const availableCourseCodes = courses.map((c) => c.course_code);
 
   const handleUploadChange = (e) => {
@@ -141,9 +162,21 @@ export default function Resources() {
     setFile(e.target.files[0]);
   };
 
-  // Filter the unfiltered snapshot by title or course code as the user
-  // types in the parent-resource search box — restricted to the current
-  // user's OWN uploads, since you can only version-link your own work.
+  const pickCourse = (c) => {
+    setSelectedCourse(c);
+    setCourseQuery(`${c.course_code} — ${c.title}`);
+    setCourseMatches([]);
+    setShowCourseSuggestions(false);
+    setUploadData((prev) => ({ ...prev, course_code: c.course_code }));
+  };
+
+  const clearCourse = () => {
+    setSelectedCourse(null);
+    setCourseQuery('');
+    setCourseMatches([]);
+    setUploadData((prev) => ({ ...prev, course_code: '' }));
+  };
+
   const currentUserId = getCurrentUserId();
   const parentSuggestions = parentQuery.trim()
     ? allResources
@@ -176,11 +209,12 @@ export default function Resources() {
       return;
     }
 
-    setUploading(true);
+    if (!uploadData.course_code) {
+      setUploadError('Please select a course from the dropdown');
+      return;
+    }
 
-    // File uploads must use FormData, not JSON.stringify — the browser
-    // sets the correct multipart Content-Type header automatically, so
-    // don't set Content-Type manually here.
+    setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
     formData.append('title', uploadData.title);
@@ -200,16 +234,14 @@ export default function Resources() {
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Upload failed');
-      }
+      if (!response.ok) throw new Error(data.message || 'Upload failed');
 
       setUploadData({ title: '', type: RESOURCE_TYPES[0].type, course_code: '' });
       setFile(null);
       handleClearParent();
+      clearCourse();
       setShowUploadForm(false);
-      fetchResources(); // refresh the visible list
+      fetchResources();
     } catch (err) {
       setUploadError(err.message);
     } finally {
@@ -235,13 +267,8 @@ export default function Resources() {
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Vote failed');
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Vote failed');
-      }
-
-      // Update just this one card's tally/vote state, instead of
-      // refetching the entire list.
       setResources((prev) =>
         prev.map((res) =>
           res.res_id === resId
@@ -261,8 +288,6 @@ export default function Resources() {
     }
 
     setExpandedVersionsFor(resId);
-
-    // Only fetch once per resource — cache the result.
     if (!versionHistory[resId]) {
       setLoadingVersions(true);
       try {
@@ -272,7 +297,6 @@ export default function Resources() {
           setVersionHistory((prev) => ({ ...prev, [resId]: data }));
         }
       } catch (err) {
-        // Non-critical — the panel will just show "no versions found"
       } finally {
         setLoadingVersions(false);
       }
@@ -293,9 +317,6 @@ export default function Resources() {
         throw new Error(data.message || 'Download failed');
       }
 
-      // The response body IS the file itself — fetch doesn't trigger a
-      // browser download automatically, so we convert it to a Blob and
-      // simulate a click on a temporary link to save it.
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -310,8 +331,6 @@ export default function Resources() {
     }
   };
 
-  // The DB only stores file_path, not a separate file-type field — derive
-  // the badge (PDF/ZIP) from the file's extension instead.
   const getFileExtension = (filePath) => {
     if (!filePath) return 'FILE';
     const parts = filePath.split('.');
@@ -360,28 +379,61 @@ export default function Resources() {
           </select>
         </div>
 
-        <div>
-          <label className="res-label">Course Code</label>
-          <input
-            type="text"
-            name="course_code"
-            list="upload-course-options"
-            required
-            placeholder="e.g. CSE204"
-            value={uploadData.course_code}
-            onChange={handleUploadChange}
-            className="res-input"
-          />
-          <datalist id="upload-course-options">
-            {courses.map((c) => (
-              <option key={c.course_code} value={c.course_code}>
-                {c.title}
-              </option>
-            ))}
-          </datalist>
+        <div className="res-parent-search-wrapper" ref={courseBoxRef}>
+          <label className="res-label">Select Course Code *</label>
+          <div className="res-parent-input-row">
+            <input
+              type="text"
+              className="res-input"
+              placeholder="Type a course code or name..."
+              value={courseQuery}
+              onChange={(e) => {
+                setCourseQuery(e.target.value);
+                setSelectedCourse(null);
+                setShowCourseSuggestions(true);
+                setUploadData((prev) => ({ ...prev, course_code: '' }));
+              }}
+              onFocus={() => setShowCourseSuggestions(true)}
+              autoComplete="off"
+              required
+            />
+            {courseQuery && (
+              <button
+                type="button"
+                className="res-parent-clear-btn"
+                onClick={clearCourse}
+                aria-label="Clear course"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {showCourseSuggestions && !selectedCourse && courseMatches.length > 0 && (
+            <ul className="res-parent-suggestions">
+              {courseMatches.map((c) => (
+                <li key={c.course_code}>
+                  <button
+                    type="button"
+                    className="res-parent-suggestion-item"
+                    onClick={() => pickCourse(c)}
+                  >
+                    <span className="res-parent-suggestion-title">{c.title}</span>
+                    <span className="res-parent-suggestion-meta">{c.course_code}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {selectedCourse && (
+            <p className="res-parent-selected-note">
+              Selected: {selectedCourse.course_code} — {selectedCourse.title}
+            </p>
+          )}
         </div>
 
-        <div className="res-parent-search-wrapper">
+        <div className="res-parent-search-wrapper" ref={parentBoxRef}>
           <label className="res-label">Previous Version (optional)</label>
           <div className="res-parent-input-row">
             <input
@@ -390,7 +442,7 @@ export default function Resources() {
               value={parentQuery}
               onChange={(e) => {
                 setParentQuery(e.target.value);
-                setSelectedParent(null); // typing invalidates a prior selection
+                setSelectedParent(null);
                 setShowParentSuggestions(true);
               }}
               onFocus={() => setShowParentSuggestions(true)}
@@ -515,7 +567,22 @@ export default function Resources() {
         </button>
       </div>
 
-      {loading && <p className="res-empty-state">Loading resources...</p>}
+      {loading && (
+        <div className="res-resource-list data-skeleton-resources" aria-label="Loading resources">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div className="res-resource-card-wrapper" key={index}>
+              <div className="res-resource-card data-skeleton-resource">
+                <span className="data-skeleton-block badge" />
+                <div className="data-skeleton-resource-copy">
+                  <span className="data-skeleton-line title" />
+                  <span className="data-skeleton-line medium" />
+                </div>
+                <span className="data-skeleton-line action" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {error && <p className="res-error">{error}</p>}
 
       {!loading && !error && (
