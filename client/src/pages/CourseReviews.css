@@ -196,12 +196,49 @@
 .p5-input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
-  height: 1.6rem;
-  width: 1.1rem;
-  background-color: var(--cr-red);
+}
+
+.cr-score-control {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+}
+
+.cr-score-control .p5-input {
+  padding-right: 2.75rem;
+}
+
+.cr-score-stepper {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  width: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.15rem;
+  background: #1a1a1a;
+  border-left: 1px solid var(--cr-card-border);
+}
+
+.cr-score-stepper button {
+  flex: 1;
+  min-height: 0;
+  border: 0;
   border-radius: 3px;
+  background: transparent;
+  color: var(--cr-text-muted);
   cursor: pointer;
-  opacity: 1;
+  font-size: 0.65rem;
+  line-height: 1;
+  padding: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.cr-score-stepper button:hover {
+  background: #27272a;
+  color: #fff;
 }
 
 /* Auto-growing textarea used for the review comment.

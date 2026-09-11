@@ -289,6 +289,39 @@ export default function CourseReviews() {
   );
 }
 
+function ScoreInput({ label, value, onChange }) {
+  const adjustValue = (amount) => {
+    const nextValue = Math.min(5, Math.max(1, Number((value + amount).toFixed(1))));
+    onChange(nextValue);
+  };
+
+  return (
+    <div>
+      <label className="p5-label">{label}</label>
+      <div className="cr-score-control">
+        <input
+          type="number"
+          min="1"
+          max="5"
+          step="0.1"
+          required
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="p5-input"
+        />
+        <div className="cr-score-stepper" aria-label={`Adjust ${label}`}>
+          <button type="button" onClick={() => adjustValue(0.1)} aria-label={`Increase ${label}`}>
+            ▲
+          </button>
+          <button type="button" onClick={() => adjustValue(-0.1)} aria-label={`Decrease ${label}`}>
+            ▼
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
   const [courseQuery, setCourseQuery] = useState('');
   const [courseMatches, setCourseMatches] = useState([]);
@@ -653,33 +686,16 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-        <div>
-          <label className="p5-label">Difficulty Level (1 = Easy, 5 = Hard)</label>
-          <input
-            type="number"
-            min="1"
-            max="5"
-            step="0.1" /* <--- ADD THIS */
-            required
-            value={difficulty}
-            onChange={(e) => setDifficulty(Number(e.target.value))}
-            className="p5-input"
-          />
-        </div>
-
-        <div>
-          <label className="p5-label">Usefulness Score (1 = Low, 5 = High)</label>
-          <input
-            type="number"
-            min="1"
-            max="5"
-            step="0.1" /* <--- ADD THIS */
-            required
-            value={prereqUse}
-            onChange={(e) => setPrereqUse(Number(e.target.value))}
-            className="p5-input"
-          />
-        </div>
+        <ScoreInput
+          label="Difficulty Level (1 = Easy, 5 = Hard)"
+          value={difficulty}
+          onChange={setDifficulty}
+        />
+        <ScoreInput
+          label="Usefulness Score (1 = Low, 5 = High)"
+          value={prereqUse}
+          onChange={setPrereqUse}
+        />
       </div>
 
       <div>
