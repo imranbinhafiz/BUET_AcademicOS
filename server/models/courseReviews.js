@@ -90,6 +90,34 @@ async function getCourseOfferings(courseCode) {
   return result.rows;
 }
 
+// Return existing topics for a course for the review-form typeahead.
+async function getCourseTopics(courseCode, search = '') {
+  const result = await db.query(
+    `SELECT topic_id, name, course_code
+     FROM topics
+     WHERE course_code = $1 AND ($2 = '' OR name ILIKE $3)
+     ORDER BY name ASC
+     LIMIT 12`,
+    [courseCode, search.trim(), `%${search.trim()}%`]
+  );
+  return result.rows;
+}
+
+// Return topics ranked by how many reviews flagged them for this course.
+async function getFlaggedTopics(courseCode) {
+  const result = await db.query(
+    `SELECT t.topic_id, t.name, COUNT(*)::int AS flag_count
+     FROM topics t
+     JOIN coursereview_topic_flag crtf ON crtf.topic_id = t.topic_id
+     WHERE t.course_code = $1
+     GROUP BY t.topic_id, t.name
+     ORDER BY flag_count DESC, t.name ASC
+     LIMIT 10`,
+    [courseCode]
+  );
+  return result.rows;
+}
+
 // ---------------------------------------------------------------------
 // Reviews
 // ---------------------------------------------------------------------
@@ -129,14 +157,45 @@ async function getReviewById(reviewId) {
 }
 
 // Insert a new review row.
-async function createReview({ courseCode, offeringId = null, userId, difficulty, prereqUse, comment, filePath = null }) {
-  const result = await db.query(
-    `INSERT INTO coursereviews (course_code, offering_id, user_id, difficulty, prereq_use, comment, file_path)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING *`,
-    [courseCode, offeringId, userId, difficulty, prereqUse, comment, filePath]
-  );
-  return result.rows[0];
+async function createReview({ courseCode, offeringId = null, userId, difficulty, prereqUse, comment, filePath = null, topics = [] }) {
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `INSERT INTO coursereviews (course_code, offering_id, user_id, difficulty, prereq_use, comment, file_path)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [courseCode, offeringId, userId, difficulty, prereqUse, comment, filePath]
+    );
+    const review = result.rows[0];
+
+    for (const topicName of topics) {
+      const existingTopic = await client.query(
+        'SELECT topic_id FROM topics WHERE course_code = $1 AND LOWER(name) = LOWER($2) LIMIT 1',
+        [courseCode, topicName]
+      );
+      const topicResult = existingTopic.rows[0]
+        ? existingTopic
+        : await client.query(
+          `INSERT INTO topics (name, course_code) VALUES ($1, $2) RETURNING topic_id`,
+          [topicName, courseCode]
+        );
+      await client.query(
+        `INSERT INTO coursereview_topic_flag (review_id, topic_id)
+         VALUES ($1, $2)
+         ON CONFLICT (review_id, topic_id) DO NOTHING`,
+        [review.review_id, topicResult.rows[0].topic_id]
+      );
+    }
+
+    await client.query('COMMIT');
+    return review;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 // Update an existing review. `fields` is a partial object — only the
@@ -264,6 +323,8 @@ module.exports = {
   getDepartments,
   getCourses,
   getCourseOfferings,
+  getCourseTopics,
+  getFlaggedTopics,
   getCourseReviews,
   getReviewById,
   createReview,

@@ -378,12 +378,12 @@ export default function UserProfile() {
                 </button>
                 </div>
 
-              {loadingRes ? (
+              {loadingRes && uploads.length === 0 ? (
                 <p className="prof-empty-state">Filtering...</p>
               ) : uploads.length === 0 ? (
                 <p className="prof-empty-state">No resources match your search.</p>
               ) : (
-                <ul className="prof-list">
+                <ul className={`prof-list${loadingRes ? ' prof-list-refreshing' : ''}`} aria-busy={loadingRes}>
                   {uploads.slice(0, 5).map(upload => (
                     <li key={upload.res_id} className="prof-list-item">
                       <div className="prof-list-header">
@@ -450,12 +450,12 @@ export default function UserProfile() {
                 </button>
                 </div>
 
-              {loadingRev ? (
+              {loadingRev && reviews.length === 0 ? (
                 <p className="prof-empty-state">Filtering...</p>
               ) : reviews.length === 0 ? (
                 <p className="prof-empty-state">No reviews match your search.</p>
               ) : (
-                <ul className="prof-list">
+                <ul className={`prof-list${loadingRev ? ' prof-list-refreshing' : ''}`} aria-busy={loadingRev}>
                   {reviews.slice(0, 10).map(review => (
                     <li key={review.review_id} className="prof-list-item prof-review-item" onClick={() => setSelectedReview({ courseCode: review.course_code, reviewId: review.review_id })}>
                       <div className="prof-list-header">

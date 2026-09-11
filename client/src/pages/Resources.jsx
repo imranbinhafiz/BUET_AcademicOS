@@ -10,15 +10,7 @@ const RESOURCE_TYPES = [
 
 const API_BASE = 'http://localhost:5000/api/resources';
 const COURSES_API = `${API_BASE}/courses`;
-
-function getCurrentUserId() {
-  try {
-    const stored = localStorage.getItem('user');
-    return stored ? JSON.parse(stored).user_id : null;
-  } catch {
-    return null;
-  }
-}
+const MY_VERSIONS_API = `${API_BASE}/my-versions`;
 
 export default function Resources() {
   const [activeType, setActiveType] = useState(null);
@@ -33,9 +25,6 @@ export default function Resources() {
   const [versionHistory, setVersionHistory] = useState({});
   const [loadingVersions, setLoadingVersions] = useState(false);
 
-  const [allResources, setAllResources] = useState([]);
-  const [courses, setCourses] = useState([]);
-
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [uploadData, setUploadData] = useState({
     title: '',
@@ -45,6 +34,10 @@ export default function Resources() {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [reportingId, setReportingId] = useState(null);
+  const [reportReason, setReportReason] = useState('');
+  const [reportError, setReportError] = useState('');
+  const [reportedResources, setReportedResources] = useState(new Set());
 
   // Course dropdown state & ref (matches CourseReviews.jsx's debounced
   // server-search pattern — courseMatches is populated by a fetch to
@@ -54,9 +47,13 @@ export default function Resources() {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showCourseSuggestions, setShowCourseSuggestions] = useState(false);
   const courseBoxRef = useRef(null);
+  const [searchCourseMatches, setSearchCourseMatches] = useState([]);
+  const [showSearchCourseSuggestions, setShowSearchCourseSuggestions] = useState(false);
+  const searchCourseBoxRef = useRef(null);
 
   // Parent resource picker state & ref
   const [parentQuery, setParentQuery] = useState('');
+  const [parentResources, setParentResources] = useState([]);
   const [selectedParent, setSelectedParent] = useState(null);
   const [showParentSuggestions, setShowParentSuggestions] = useState(false);
   const parentBoxRef = useRef(null);
@@ -66,33 +63,15 @@ export default function Resources() {
       if (courseBoxRef.current && !courseBoxRef.current.contains(e.target)) {
         setShowCourseSuggestions(false);
       }
+      if (searchCourseBoxRef.current && !searchCourseBoxRef.current.contains(e.target)) {
+        setShowSearchCourseSuggestions(false);
+      }
       if (parentBoxRef.current && !parentBoxRef.current.contains(e.target)) {
         setShowParentSuggestions(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  useEffect(() => {
-    fetch(API_BASE)
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setAllResources(data);
-      })
-      .catch(() => {});
-  }, []);
-
-  // Still preloaded once — used for the "search by course code" datalist
-  // further down the page, which is a separate feature from the upload
-  // form's course picker below.
-  useEffect(() => {
-    fetch(COURSES_API)
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setCourses(data);
-      })
-      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -123,6 +102,46 @@ export default function Resources() {
     return () => clearTimeout(timeoutId);
   }, [courseQuery, selectedCourse]);
 
+  useEffect(() => {
+    if (!selectedCourse) {
+      setParentResources([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    fetch(`${MY_VERSIONS_API}?course_code=${encodeURIComponent(selectedCourse.course_code)}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      signal: controller.signal
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setParentResources(data);
+        else setParentResources([]);
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError') setParentResources([]);
+      });
+
+    return () => controller.abort();
+  }, [selectedCourse]);
+
+  useEffect(() => {
+    const query = courseSearch.trim();
+    if (!query) {
+      setSearchCourseMatches([]);
+      return;
+    }
+    const timeoutId = setTimeout(() => {
+      fetch(`${COURSES_API}?search=${encodeURIComponent(query)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setSearchCourseMatches(data.slice(0, 8));
+        })
+        .catch(() => setSearchCourseMatches([]));
+    }, 250);
+    return () => clearTimeout(timeoutId);
+  }, [courseSearch]);
+
   const fetchResources = async () => {
     setLoading(true);
     setError('');
@@ -152,8 +171,6 @@ export default function Resources() {
     setActiveType((prev) => (prev === type ? null : type));
   };
 
-  const availableCourseCodes = courses.map((c) => c.course_code);
-
   const handleUploadChange = (e) => {
     setUploadData({ ...uploadData, [e.target.name]: e.target.value });
   };
@@ -167,6 +184,7 @@ export default function Resources() {
     setCourseQuery(`${c.course_code} — ${c.title}`);
     setCourseMatches([]);
     setShowCourseSuggestions(false);
+    handleClearParent();
     setUploadData((prev) => ({ ...prev, course_code: c.course_code }));
   };
 
@@ -174,19 +192,14 @@ export default function Resources() {
     setSelectedCourse(null);
     setCourseQuery('');
     setCourseMatches([]);
+    handleClearParent();
     setUploadData((prev) => ({ ...prev, course_code: '' }));
   };
 
-  const currentUserId = getCurrentUserId();
-  const parentSuggestions = parentQuery.trim()
-    ? allResources
-        .filter((r) => r.user_id === currentUserId)
-        .filter(
-          (r) =>
-            r.title.toLowerCase().includes(parentQuery.toLowerCase()) ||
-            r.course_code.toLowerCase().includes(parentQuery.toLowerCase())
-        )
-        .slice(0, 6)
+  const parentSuggestions = selectedCourse
+    ? parentResources
+        .filter((r) => !parentQuery.trim() || r.title.toLowerCase().includes(parentQuery.toLowerCase()))
+        .slice(0, 8)
     : [];
 
   const handleSelectParent = (resource) => {
@@ -278,6 +291,33 @@ export default function Resources() {
       );
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const handleReportSubmit = async (resId) => {
+    if (!reportReason.trim()) {
+      setReportError('Please enter a reason for reporting.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/reports`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ target_type: 'resource', target_id: resId, reason: reportReason })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to report resource');
+
+      setReportedResources((prev) => new Set(prev).add(resId));
+      setReportingId(null);
+      setReportReason('');
+      setReportError('');
+    } catch (err) {
+      setReportError(err.message);
     }
   };
 
@@ -438,14 +478,16 @@ export default function Resources() {
           <div className="res-parent-input-row">
             <input
               type="text"
-              placeholder="Search by title to link a previous version..."
+              placeholder={selectedCourse ? 'Select a previous version...' : 'Choose a course first'}
               value={parentQuery}
               onChange={(e) => {
                 setParentQuery(e.target.value);
                 setSelectedParent(null);
                 setShowParentSuggestions(true);
               }}
-              onFocus={() => setShowParentSuggestions(true)}
+              onFocus={() => selectedCourse && setShowParentSuggestions(true)}
+              disabled={!selectedCourse}
+              autoComplete="off"
               className="res-input"
             />
             {selectedParent && (
@@ -470,7 +512,7 @@ export default function Resources() {
                     onClick={() => handleSelectParent(r)}
                   >
                     <span className="res-parent-suggestion-title">{r.title}</span>
-                    <span className="res-parent-suggestion-meta">{r.course_code}</span>
+                    <span className="res-parent-suggestion-meta">VERSION {r.version || 1}</span>
                   </button>
                 </li>
               ))}
@@ -522,29 +564,50 @@ export default function Resources() {
         ))}
       </div>
 
-      <div className="res-course-search-wrapper">
+      <div className="res-course-search-wrapper res-parent-search-wrapper" ref={searchCourseBoxRef}>
         <input
           type="text"
-          list="course-code-options"
           placeholder="🔍 Search by course code (e.g. CSE204)..."
           value={courseSearch}
-          onChange={(e) => setCourseSearch(e.target.value)}
+          onChange={(e) => {
+            setCourseSearch(e.target.value);
+            setShowSearchCourseSuggestions(true);
+          }}
+          onFocus={() => setShowSearchCourseSuggestions(true)}
+          autoComplete="off"
           className="res-input res-course-search-input"
         />
-        <datalist id="course-code-options">
-          {availableCourseCodes.map((code) => (
-            <option key={code} value={code} />
-          ))}
-        </datalist>
         {courseSearch && (
           <button
             type="button"
-            onClick={() => setCourseSearch('')}
+            onClick={() => {
+              setCourseSearch('');
+              setShowSearchCourseSuggestions(false);
+            }}
             className="res-parent-clear-btn"
             aria-label="Clear course search"
           >
             ✕
           </button>
+        )}
+        {showSearchCourseSuggestions && searchCourseMatches.length > 0 && (
+          <ul className="res-parent-suggestions">
+            {searchCourseMatches.map((course) => (
+              <li key={course.course_code}>
+                <button
+                  type="button"
+                  className="res-parent-suggestion-item"
+                  onClick={() => {
+                    setCourseSearch(course.course_code);
+                    setShowSearchCourseSuggestions(false);
+                  }}
+                >
+                  <span className="res-parent-suggestion-title">{course.title}</span>
+                  <span className="res-parent-suggestion-meta">{course.course_code}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
@@ -629,11 +692,62 @@ export default function Resources() {
                   <button className="res-card-btn" onClick={() => handleDownload(res.res_id, res.title)}>
                     DOWNLOAD
                   </button>
+
+                  {/* MODIFIED REPORT BLOCK STARTS HERE */}
+                  {reportedResources.has(res.res_id) ? (
+                    <span className="cr-report-success">
+                      ✅ Report submitted. A moderator will review it.
+                    </span>
+                  ) : reportingId === res.res_id ? (
+                    <div className="res-report-form res-report-form-active">
+                      <div className="cr-report-box">
+                        <input
+                          type="text"
+                          className="p5-input"
+                          placeholder="Reason for reporting..."
+                          value={reportReason}
+                          onChange={(e) => {
+                            setReportReason(e.target.value);
+                            if (reportError) setReportError('');
+                          }}
+                          autoFocus
+                        />
+                        <button className="cr-submit-btn" onClick={() => handleReportSubmit(res.res_id)}>SUBMIT</button>
+                        <button className="p5-versions-btn" onClick={() => {
+                          setReportingId(null);
+                          setReportReason('');
+                          setReportError('');
+                        }}>CANCEL</button>
+                      </div>
+                      {reportError && (
+                        <span style={{ color: '#ff6b6b', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                          {reportError}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <button className="cr-report-btn" onClick={() => {
+                      if (!localStorage.getItem('token')) {
+                        alert('Please log in to report a resource.');
+                        return;
+                      }
+                      setReportingId(res.res_id);
+                      setReportReason('');
+                      setReportError('');
+                    }}>
+                      ⚑ Report
+                    </button>
+                  )}
+                  {/* MODIFIED REPORT BLOCK ENDS HERE */}
+                  
                 </div>
               </div>
 
-              {expandedVersionsFor === res.res_id && (
-                <div className="res-version-history">
+              <div
+                className={`res-version-history${expandedVersionsFor === res.res_id ? ' res-version-history-open' : ''}`}
+                aria-hidden={expandedVersionsFor !== res.res_id}
+              >
+                <div className="res-version-history-inner">
                   {loadingVersions && !versionHistory[res.res_id] && (
                     <p className="res-empty-state">Loading versions...</p>
                   )}
@@ -654,7 +768,7 @@ export default function Resources() {
                       </div>
                     ))}
                 </div>
-              )}
+              </div>
             </div>
           ))}
 

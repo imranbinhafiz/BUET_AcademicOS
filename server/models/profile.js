@@ -76,7 +76,7 @@ async function updateUserAvatar(userId, avatarPath) {
  * @returns {array}
  */
 async function getUserResources({ userId, search, sortBy = 'default', order = 'desc' }) {
-  const conditions = ['r.user_id = $1', `r.approval_status = 'approved'`];
+  const conditions = ['r.user_id = $1'];
   const values = [userId];
 
   if (search) {

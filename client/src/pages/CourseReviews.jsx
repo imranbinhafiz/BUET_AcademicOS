@@ -5,6 +5,7 @@ import './CourseReviews.css';
 const API_BASE = 'http://localhost:5000/api/course-reviews';
 const COURSES_API = `${API_BASE}/courses`;
 const REVIEWS_API = `${API_BASE}/reviews`;
+const TOPICS_API = `${API_BASE}/courses`;
 const DEPARTMENTS_API = `${API_BASE}/departments`;
 const REPORTS_API = `${API_BASE}/reports`;
 const SERVER_ORIGIN = API_BASE.replace('/api/course-reviews', '');
@@ -32,12 +33,15 @@ export default function CourseReviews() {
   const [order, setOrder] = useState('desc');
 
   const [courses, setCourses] = useState([]);
+  const [courseSearchMatches, setCourseSearchMatches] = useState([]);
+  const [showCourseSearchSuggestions, setShowCourseSearchSuggestions] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [activeCourse, setActiveCourse] = useState(null);
   const [showWriteReview, setShowWriteReview] = useState(false);
+  const courseSearchBoxRef = useRef(null);
 
   const currentUser = getCurrentUser();
 
@@ -48,6 +52,33 @@ export default function CourseReviews() {
         if (Array.isArray(data)) setDepartments(data);
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const query = courseSearch.trim();
+    if (!query) {
+      setCourseSearchMatches([]);
+      return;
+    }
+    const timeoutId = setTimeout(() => {
+      fetch(`${COURSES_API}?search=${encodeURIComponent(query)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setCourseSearchMatches(data.slice(0, 8));
+        })
+        .catch(() => setCourseSearchMatches([]));
+    }, 250);
+    return () => clearTimeout(timeoutId);
+  }, [courseSearch]);
+
+  useEffect(() => {
+    const handler = (event) => {
+      if (courseSearchBoxRef.current && !courseSearchBoxRef.current.contains(event.target)) {
+        setShowCourseSearchSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const fetchCourses = useCallback(async () => {
@@ -85,6 +116,7 @@ export default function CourseReviews() {
   const clearFilters = () => {
     setCourseSearch('');
     setDeptFilter('');
+    setShowCourseSearchSuggestions(false);
   };
 
   const hasActiveFilters = courseSearch || deptFilter;
@@ -113,23 +145,50 @@ export default function CourseReviews() {
         onCancel={() => setShowWriteReview(false)}
       />
 
-      <div className="p5-course-search-wrapper">
+      <div className="p5-course-search-wrapper p5-parent-search-wrapper" ref={courseSearchBoxRef}>
         <input
           type="text"
           placeholder="🔍 Search by course code, name, or teacher..."
           value={courseSearch}
-          onChange={(e) => setCourseSearch(e.target.value)}
+          onChange={(e) => {
+            setCourseSearch(e.target.value);
+            setShowCourseSearchSuggestions(true);
+          }}
+          onFocus={() => setShowCourseSearchSuggestions(true)}
+          autoComplete="off"
           className="p5-input p5-course-search-input"
         />
         {courseSearch && (
           <button
             type="button"
-            onClick={() => setCourseSearch('')}
+            onClick={() => {
+              setCourseSearch('');
+              setShowCourseSearchSuggestions(false);
+            }}
             className="p5-parent-clear-btn"
             aria-label="Clear course search"
           >
             ✕
           </button>
+        )}
+        {showCourseSearchSuggestions && courseSearchMatches.length > 0 && (
+          <ul className="p5-parent-suggestions">
+            {courseSearchMatches.map((course) => (
+              <li key={course.course_code}>
+                <button
+                  type="button"
+                  className="p5-parent-suggestion-item"
+                  onClick={() => {
+                    setCourseSearch(course.course_code);
+                    setShowCourseSearchSuggestions(false);
+                  }}
+                >
+                  <span className="p5-parent-suggestion-title">{course.title}</span>
+                  <span className="p5-parent-suggestion-meta">{course.course_code}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
@@ -172,7 +231,7 @@ export default function CourseReviews() {
         )}
       </div>
 
-      {loading && (
+      {loading && courses.length === 0 && (
         <div className="cr-courses-grid data-skeleton-grid" aria-label="Loading courses">
           {Array.from({ length: 6 }, (_, index) => (
             <div className="cr-course-card data-skeleton-card" key={index}>
@@ -186,8 +245,11 @@ export default function CourseReviews() {
       )}
       {error && <p className="p5-error">{error}</p>}
 
-      {!loading && !error && (
-        <div className="cr-courses-grid">
+      {!error && (courses.length > 0 || !loading) && (
+        <div
+          className={`cr-courses-grid${loading ? ' cr-courses-grid-refreshing' : ''}`}
+          aria-busy={loading}
+        >
           {courses.map((c) => (
             <div key={c.course_code} className="cr-course-card">
               {/* UPDATED: Added numerical difficulty score next to the text tag */}
@@ -238,6 +300,11 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
   const [showTeacherSuggestions, setShowTeacherSuggestions] = useState(false);
   const [selectedOffering, setSelectedOffering] = useState(null);
 
+  const [topicQuery, setTopicQuery] = useState('');
+  const [topicMatches, setTopicMatches] = useState([]);
+  const [selectedTopics, setSelectedTopics] = useState([]);
+  const [showTopicSuggestions, setShowTopicSuggestions] = useState(false);
+
   const [difficulty, setDifficulty] = useState(3);
   const [prereqUse, setPrereqUse] = useState(3);
   const [comment, setComment] = useState('');
@@ -249,6 +316,7 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
   const textareaRef = useRef(null);
   const courseBoxRef = useRef(null);
   const teacherBoxRef = useRef(null);
+  const topicBoxRef = useRef(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -283,6 +351,8 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
     setSelectedOffering(null);
     setTeacherQuery('');
     setOfferings([]);
+    setSelectedTopics([]);
+    setTopicQuery('');
   };
 
   const clearCourse = () => {
@@ -292,6 +362,8 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
     setSelectedOffering(null);
     setTeacherQuery('');
     setOfferings([]);
+    setSelectedTopics([]);
+    setTopicQuery('');
   };
 
   useEffect(() => {
@@ -329,12 +401,44 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
   };
 
   useEffect(() => {
+    if (!selectedCourse) {
+      setTopicMatches([]);
+      return;
+    }
+    const query = topicQuery.trim();
+    const timeoutId = setTimeout(() => {
+      fetch(`${TOPICS_API}/${selectedCourse.course_code}/topics?search=${encodeURIComponent(query)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setTopicMatches(data.filter((topic) => !selectedTopics.some((selected) => selected.name.toLowerCase() === topic.name.toLowerCase())));
+          }
+        })
+        .catch(() => setTopicMatches([]));
+    }, 200);
+    return () => clearTimeout(timeoutId);
+  }, [selectedCourse, topicQuery, selectedTopics]);
+
+  const addTopic = (topic) => {
+    const name = (typeof topic === 'string' ? topic : topic.name).trim();
+    if (!name || selectedTopics.some((selected) => selected.name.toLowerCase() === name.toLowerCase()) || selectedTopics.length >= 10) return;
+    setSelectedTopics((prev) => [...prev, { name }]);
+    setTopicQuery('');
+    setShowTopicSuggestions(false);
+  };
+
+  const removeTopic = (name) => setSelectedTopics((prev) => prev.filter((topic) => topic.name !== name));
+
+  useEffect(() => {
     const handler = (e) => {
       if (courseBoxRef.current && !courseBoxRef.current.contains(e.target)) {
         setShowCourseSuggestions(false);
       }
       if (teacherBoxRef.current && !teacherBoxRef.current.contains(e.target)) {
         setShowTeacherSuggestions(false);
+      }
+      if (topicBoxRef.current && !topicBoxRef.current.contains(e.target)) {
+        setShowTopicSuggestions(false);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -364,6 +468,7 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
       formData.append('difficulty', difficulty);
       formData.append('prereq_use', prereqUse);
       formData.append('comment', comment);
+      formData.append('topics', JSON.stringify(selectedTopics.map((topic) => topic.name)));
       if (file) formData.append('attachment', file);
 
       const response = await fetch(REVIEWS_API, {
@@ -380,6 +485,8 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
       setPrereqUse(3);
       setComment('');
       setFile(null);
+      setSelectedTopics([]);
+      setTopicQuery('');
 
       onSubmitted();
     } catch (err) {
@@ -490,6 +597,61 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
         )}
       </div>
 
+      <div className="p5-parent-search-wrapper" ref={topicBoxRef}>
+        <label className="p5-label">Difficult Topics (Optional, up to 10)</label>
+        <div className="cr-topic-picker">
+          <div className="cr-topic-chips">
+            {selectedTopics.map((topic) => (
+              <span className="cr-topic-chip" key={topic.name}>
+                {topic.name}
+                <button type="button" onClick={() => removeTopic(topic.name)} aria-label={`Remove ${topic.name}`}>
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
+          <input
+            type="text"
+            className="p5-input"
+            placeholder={selectedCourse ? 'Type a topic and choose a suggestion...' : 'Choose a course first'}
+            value={topicQuery}
+            onChange={(e) => {
+              setTopicQuery(e.target.value);
+              setShowTopicSuggestions(true);
+            }}
+            onFocus={() => selectedCourse && setShowTopicSuggestions(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && topicQuery.trim()) {
+                e.preventDefault();
+                addTopic(topicQuery);
+              }
+            }}
+            disabled={!selectedCourse || selectedTopics.length >= 10}
+            autoComplete="off"
+          />
+        </div>
+        {showTopicSuggestions && topicQuery.trim() && selectedCourse && (
+          <ul className="p5-parent-suggestions">
+            {topicMatches.map((topic) => (
+              <li key={topic.topic_id}>
+                <button type="button" className="p5-parent-suggestion-item" onClick={() => addTopic(topic)}>
+                  <span className="p5-parent-suggestion-title">{topic.name}</span>
+                  <span className="p5-parent-suggestion-meta">ADD TOPIC</span>
+                </button>
+              </li>
+            ))}
+            {!topicMatches.some((topic) => topic.name.toLowerCase() === topicQuery.trim().toLowerCase()) && (
+              <li>
+                <button type="button" className="p5-parent-suggestion-item" onClick={() => addTopic(topicQuery)}>
+                  <span className="p5-parent-suggestion-title">{topicQuery.trim()}</span>
+                  <span className="p5-parent-suggestion-meta">NEW TOPIC</span>
+                </button>
+              </li>
+            )}
+          </ul>
+        )}
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div>
           <label className="p5-label">Difficulty Level (1 = Easy, 5 = Hard)</label>
@@ -565,6 +727,7 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
 export function CourseReviewsModal({ courseCode, reviewId, currentUser, onClose }) {
   const [downloadingId, setDownloadingId] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [flaggedTopics, setFlaggedTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -591,6 +754,7 @@ export function CourseReviewsModal({ courseCode, reviewId, currentUser, onClose 
   useEffect(() => {
     const fetchReviews = async () => {
       setLoading(true);
+      setError('');
       try {
         const headers = {};
         const token = localStorage.getItem('token');
@@ -608,6 +772,13 @@ export function CourseReviewsModal({ courseCode, reviewId, currentUser, onClose 
         }
 
         setReviews(reviewId ? data.filter((review) => String(review.review_id) === String(reviewId)) : data);
+
+        fetch(`${COURSES_API}/${courseCode}/flagged-topics`)
+          .then((topicResponse) => topicResponse.json())
+          .then((topicData) => {
+            if (Array.isArray(topicData)) setFlaggedTopics(topicData);
+          })
+          .catch(() => setFlaggedTopics([]));
       } catch (err) {
         setError(err.message);
       } finally {
@@ -616,7 +787,7 @@ export function CourseReviewsModal({ courseCode, reviewId, currentUser, onClose 
     };
 
     fetchReviews();
-  }, [courseCode]);
+  }, [courseCode, reviewId]);
 
   const handleVote = async (reviewId, value) => {
     const token = localStorage.getItem('token');
@@ -797,7 +968,24 @@ export function CourseReviewsModal({ courseCode, reviewId, currentUser, onClose 
           )}
         </div>
 
-        <div className="cr-anilist-reviews-list">
+        <div className="cr-anilist-modal-body">
+          <aside className="cr-flagged-topics-panel">
+            <span className="cr-anilist-tag">MOST FLAGGED TOPICS</span>
+            {flaggedTopics.length === 0 ? (
+              <p className="cr-topic-empty">No topics flagged yet.</p>
+            ) : (
+              <ol className="cr-flagged-topics-list">
+                {flaggedTopics.map((topic) => (
+                  <li key={topic.topic_id}>
+                    <span>{topic.name}</span>
+                    <strong>{topic.flag_count}</strong>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </aside>
+
+          <div className="cr-anilist-reviews-list">
           {loading && (
             <div className="data-skeleton-review-list" aria-label="Loading reviews">
               {Array.from({ length: 3 }, (_, index) => (
@@ -819,10 +1007,11 @@ export function CourseReviewsModal({ courseCode, reviewId, currentUser, onClose 
             !error &&
             sortedReviews.map((review) => {
               const isExpanded = expandedReviews.has(review.review_id);
-              const lines = review.comment.split('\n');
-              const isLong = review.comment.length > MAX_REVIEW_LENGTH || lines.length > 4;
+              const comment = review.comment || '';
+              const lines = comment.split('\n');
+              const isLong = comment.length > MAX_REVIEW_LENGTH || lines.length > 4;
 
-              let displayText = review.comment;
+              let displayText = comment;
               if (!isExpanded && isLong) {
                 if (lines.length > 4) {
                   displayText = lines.slice(0, 4).join('\n') + '...';
@@ -981,6 +1170,7 @@ export function CourseReviewsModal({ courseCode, reviewId, currentUser, onClose 
                 </div>
               );
             })}
+          </div>
         </div>
       </div>
     </div>

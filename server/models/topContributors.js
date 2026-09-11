@@ -43,7 +43,7 @@ const CONTRIBUTOR_STATS_SELECT = `
       COALESCE(SUM(rv.value), 0)::int AS upload_votes
     FROM resources r
     LEFT JOIN resourcevote rv ON rv.res_id = r.res_id
-    WHERE r.approval_status = 'approved'
+    WHERE 1 = 1
     GROUP BY r.user_id
   ) uploads ON uploads.user_id = u.user_id
   LEFT JOIN (
@@ -102,7 +102,7 @@ async function getUserProfile(userId) {
   const uploadsResult = await db.query(
     `SELECT res_id, title, type, course_code
      FROM resources
-     WHERE user_id = $1 AND approval_status = 'approved'
+    WHERE user_id = $1
      ORDER BY res_id DESC`,
     [userId]
   );

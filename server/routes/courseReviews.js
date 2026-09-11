@@ -9,6 +9,8 @@ const {
   getDepartments,
   getCourses,
   getCourseOfferings,
+  getCourseTopics,
+  getFlaggedTopics,
   getCourseReviews,
   getReviewById,
   createReview,
@@ -52,7 +54,8 @@ const reviewSchema = Joi.object({
   offering_id: Joi.number().integer().positive().optional().allow(null, ''),
   difficulty: Joi.number().min(1).max(5).required(),
   prereq_use: Joi.number().min(1).max(5).required(),
-  comment: Joi.string().min(3).required()
+  comment: Joi.string().min(3).required(),
+  topics: Joi.array().items(Joi.string().trim().min(1).max(255)).max(10).unique().default([])
 });
 
 const reviewUpdateSchema = Joi.object({
@@ -136,6 +139,28 @@ router.get('/courses/:courseCode/offerings', async (req, res) => {
   }
 });
 
+// GET /api/courses/:courseCode/topics?search=...
+router.get('/courses/:courseCode/topics', async (req, res) => {
+  try {
+    const topics = await getCourseTopics(req.params.courseCode, req.query.search || '');
+    return res.json(topics);
+  } catch (err) {
+    console.error('Error fetching course topics:', err);
+    return res.status(500).json({ message: 'Server error while fetching topics.' });
+  }
+});
+
+// GET /api/courses/:courseCode/flagged-topics
+router.get('/courses/:courseCode/flagged-topics', async (req, res) => {
+  try {
+    const topics = await getFlaggedTopics(req.params.courseCode);
+    return res.json(topics);
+  } catch (err) {
+    console.error('Error fetching flagged topics:', err);
+    return res.status(500).json({ message: 'Server error while fetching flagged topics.' });
+  }
+});
+
 // GET /api/courses/:courseCode/reviews
 // Returns list of reviews for a given course, including vote_tally and current_vote
 // (current_vote should be scoped to the requesting user if authenticated)
@@ -181,7 +206,15 @@ router.post(
   },
   async (req, res) => {
     try {
-      const { error, value } = reviewSchema.validate(req.body);
+      let parsedTopics = [];
+      if (req.body.topics) {
+        try {
+          parsedTopics = JSON.parse(req.body.topics);
+        } catch {
+          return res.status(400).json({ message: 'Topics must be a valid JSON array.' });
+        }
+      }
+      const { error, value } = reviewSchema.validate({ ...req.body, topics: parsedTopics });
       if (error) {
         if (req.file) {
           await fs.unlink(req.file.path).catch(() => {});
@@ -189,7 +222,7 @@ router.post(
         return res.status(400).json({ message: error.details[0].message });
       }
 
-      const { course_code, offering_id, difficulty, prereq_use, comment } = value;
+      const { course_code, offering_id, difficulty, prereq_use, comment, topics } = value;
 
       const filePath = req.file ? req.file.path.replace(/\\/g, '/') : null;
 
@@ -200,7 +233,8 @@ router.post(
         difficulty,
         prereqUse: prereq_use,
         comment,
-        filePath
+        filePath,
+        topics
       });
 
       return res.status(201).json(createdReview);

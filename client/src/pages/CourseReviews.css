@@ -316,6 +316,12 @@ textarea.p5-input {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.25rem;
+  transition: opacity 0.2s ease;
+}
+
+.cr-courses-grid-refreshing {
+  opacity: 0.58;
+  pointer-events: none;
 }
 
 .cr-course-card {
@@ -431,6 +437,7 @@ textarea.p5-input {
   box-sizing: border-box;
   overflow: hidden;
   overscroll-behavior: contain;
+  animation: cr-review-overlay-in 220ms ease-out both;
 }
 
 .cr-anilist-container {
@@ -438,7 +445,7 @@ textarea.p5-input {
   border: 2px solid var(--cr-red);
   border-radius: 6px;
   width: 100%;
-  max-width: 750px;
+  max-width: 1040px;
   max-height: 85vh;
   height: min(85vh, 720px);
   min-height: 0;
@@ -447,6 +454,76 @@ textarea.p5-input {
   position: relative;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
   overflow: hidden;
+  animation: cr-review-modal-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cr-anilist-modal-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
+}
+
+.cr-flagged-topics-panel {
+  grid-column: 1;
+  padding: 1.5rem 1rem;
+  border-right: 1px solid var(--cr-card-border);
+  background: #151515;
+  overflow-y: auto;
+}
+
+.cr-flagged-topics-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.cr-flagged-topics-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--cr-card-border);
+  font-family: var(--font-cr);
+  font-size: 0.95rem;
+}
+
+.cr-flagged-topics-list li span {
+  overflow-wrap: anywhere;
+}
+
+.cr-flagged-topics-list strong {
+  color: var(--cr-red-hover);
+  flex-shrink: 0;
+}
+
+.cr-topic-empty {
+  color: var(--cr-text-muted);
+  font-family: var(--font-cr);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.cr-anilist-reviews-list {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+@keyframes cr-review-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cr-review-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .cr-anilist-close-btn {
@@ -496,6 +573,31 @@ textarea.p5-input {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+@media (max-width: 700px) {
+  .cr-anilist-modal-body {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .cr-flagged-topics-panel {
+    border-right: 0;
+    border-bottom: 1px solid var(--cr-card-border);
+    padding: 1rem;
+  }
+
+  .cr-flagged-topics-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .cr-anilist-reviews-list {
+    overflow-y: visible;
+  }
 }
 
 /* AniList Cards Inside Modal */
@@ -869,6 +971,53 @@ textarea.p5-input {
   font-size: 0.8rem;
   color: var(--cr-text-muted);
   margin: 0.5rem 0 0 0;
+}
+
+.cr-topic-picker {
+  background: #111;
+  border: 1px solid var(--cr-card-border);
+  border-radius: 4px;
+  padding: 0;
+}
+
+.cr-topic-picker .p5-input {
+  border: none;
+  padding: 0.55rem 0.75rem;
+}
+
+.cr-topic-picker .p5-input:focus {
+  border: none;
+}
+
+.cr-topic-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.cr-topic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(185, 21, 34, 0.2);
+  border: 1px solid var(--cr-red);
+  border-radius: 3px;
+  color: var(--cr-text-light);
+  font-family: var(--font-cr);
+  font-size: 0.85rem;
+  padding: 0.25rem 0.45rem;
+}
+
+.cr-topic-chip button {
+  border: 0;
+  background: transparent;
+  color: var(--cr-text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.cr-topic-chip button:hover {
+  color: #fff;
 }
 
 .cr-report-success {

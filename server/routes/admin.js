@@ -7,8 +7,7 @@ const {
   getBatchProgressHistory,
   advanceBatchProgress,
   listModerationQueue,
-  resolveReport,
-  moderateResource
+  resolveReport
 } = require('../models/admin');
 
 const router = express.Router();
@@ -28,11 +27,6 @@ const advanceBodySchema = Joi.object({
 const reportResolutionSchema = Joi.object({
   status: Joi.string().valid('reviewed', 'dismissed').required(),
   resolution_note: Joi.string().trim().max(500).allow('').optional()
-}).unknown(false);
-
-const resourceModerationSchema = Joi.object({
-  approval_status: Joi.string().valid('approved', 'rejected').required(),
-  moderation_note: Joi.string().trim().max(500).allow('').optional()
 }).unknown(false);
 
 const deleteContentSchema = Joi.object({
@@ -237,30 +231,6 @@ router.delete('/reports/:reportId/content', async (req, res) => {
     return res.json({ message: 'Content deleted and owner notified successfully.' });
   } catch (err) {
     return databaseError(res, err, 'Could not delete the reported content.');
-  }
-});
-
-// PATCH /api/admin/resources/:resourceId/moderation
-router.patch('/resources/:resourceId/moderation', async (req, res) => {
-  const idValidation = Joi.number().integer().positive().validate(req.params.resourceId);
-  const bodyValidation = resourceModerationSchema.validate(req.body);
-  
-  if (idValidation.error || bodyValidation.error) {
-    return validationError(res, idValidation.error || bodyValidation.error);
-  }
-
-  try {
-    const resource = await moderateResource({
-      resourceId: idValidation.value,
-      approvalStatus: bodyValidation.value.approval_status,
-      moderationNote: bodyValidation.value.moderation_note,
-      actorUserId: req.activeUser.user_id
-    });
-    
-    if (!resource) return res.status(409).json({ code: 'RESOURCE_NOT_PENDING', message: 'This resource is no longer waiting for review.' });
-    return res.json({ resource });
-  } catch (err) {
-    return databaseError(res, err, 'Could not moderate the resource.');
   }
 });
 

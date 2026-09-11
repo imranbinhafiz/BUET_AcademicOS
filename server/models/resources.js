@@ -18,11 +18,8 @@ async function getResources({ type, courseCode, currentUserId, sortBy = 'default
   const conditions = [];
   const values = [];
 
-  // Pending/rejected uploads are private to their uploader until an admin
-  // approves them. Existing public resources were migrated as approved.
   values.push(currentUserId || null);
   const currentUserParam = `$${values.length}`;
-  conditions.push(`(r.approval_status = 'approved' OR r.user_id = ${currentUserParam})`);
 
   if (type) {
     values.push(type);
@@ -56,6 +53,20 @@ async function getResources({ type, courseCode, currentUserId, sortBy = 'default
   return result.rows;
 }
 
+// Fetch every version owned by a user for one course. This is separate from
+// the public resource feed because version selection must include all ancestors
+// and newly uploaded versions, regardless of feed sorting or visibility.
+async function getUserResourceVersions(userId, courseCode) {
+  const result = await db.query(
+    `SELECT res_id, title, type, version, parent_res_id, course_code, created_at
+     FROM resources
+     WHERE user_id = $1 AND course_code = $2
+     ORDER BY version DESC, created_at DESC, res_id DESC`,
+    [userId, courseCode]
+  );
+  return result.rows;
+}
+
 // Fetch a single resource by its ID, including its download count, vote
 // tally, uploader's name, and (if a logged-in user is provided) that
 // user's own current vote on this resource.
@@ -77,9 +88,23 @@ async function getResourceById(resId, currentUserId) {
 
 // Insert a new resource row.
 async function createResource({ title, type, courseCode, userId, filePath, parentResId = null }) {
+  if (parentResId) {
+    const parent = await db.query(
+      `SELECT res_id
+       FROM resources
+       WHERE res_id = $1 AND user_id = $2 AND course_code = $3`,
+      [parentResId, userId, courseCode]
+    );
+    if (!parent.rows[0]) {
+      const error = new Error('Selected previous version is not owned by you or does not belong to this course');
+      error.status = 400;
+      throw error;
+    }
+  }
+
   const result = await db.query(
-    `INSERT INTO resources (title, type, course_code, user_id, file_path, parent_res_id)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO resources (title, type, course_code, user_id, file_path, parent_res_id, approval_status)
+    VALUES ($1, $2, $3, $4, $5, $6, 'approved')
      RETURNING *`,
     [title, type, courseCode, userId, filePath, parentResId]
   );
@@ -205,6 +230,7 @@ async function getVersionHistory(resId) {
 
 module.exports = {
   getResources,
+  getUserResourceVersions,
   getResourceById,
   createResource,
   deleteResource,

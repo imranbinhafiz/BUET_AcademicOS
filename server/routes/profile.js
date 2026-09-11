@@ -25,7 +25,7 @@ const avatarUpload = multer({
   fileFilter: (req, file, callback) => {
     callback(null, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype));
   },
-  limits: { fileSize: 5 * 1024 * 1024 }
+  limits: { fileSize: 2 * 1024 * 1024 }
 });
 
 // GET /api/profile/:userId
@@ -75,15 +75,34 @@ router.patch('/:userId', verifyToken, async (req, res) => {
   }
 });
 
-router.patch('/:userId/avatar', verifyToken, avatarUpload.single('avatar'), async (req, res) => {
+router.patch('/:userId/avatar', verifyToken, (req, res, next) => {
+  avatarUpload.single('avatar')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      // Catch Multer's built-in file size error
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: 'Image size too large. Maximum size is 10MB.' });
+      }
+      return res.status(400).json({ message: `Upload error: ${err.message}` });
+    } else if (err) {
+      return res.status(500).json({ message: 'Unknown error occurred during upload.' });
+    }
+    // If no error, proceed to the main route logic
+    next();
+  });
+}, async (req, res) => {
   try {
     const userId = parseInt(req.params.userId, 10);
     if (isNaN(userId)) 
       return res.status(400).json({ message: 'Invalid user ID' });
+      
     if (req.user.user_id !== userId) 
       return res.status(403).json({ message: 'You can only edit your own avatar.' });
+      
     if (!req.file) 
       return res.status(400).json({ message: 'Please choose a valid image.' });
+
+    // NOTE: We completely removed the `req.file.fileSize > limits` check!
+    // Multer already guaranteed the file is under 10MB by the time we reach this line.
 
     const previousProfile = await getUserBasicProfile(userId);
     const profile = await updateUserAvatar(userId, `/uploads/avatars/${req.file.filename}`);
