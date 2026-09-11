@@ -10,15 +10,15 @@ import Performance from './pages/Performance';
 import Notifications from './pages/Notifications';
 import AdminBatchProgress from './pages/AdminBatchProgress';
 import AdminModeration from './pages/AdminModeration';
-import Profile from './pages/Profile';
+import UserProfile from './pages/UserProfile';
 
 export default function App() {
   return (
     <Routes>
         <Route path="/login" element={<Auth isSignup={false}/>} />
         <Route path="/register" element={<Auth isSignup={true}/>} />
-
       <Route element={<Layout />}>
+        <Route path="/profile/:userId" element={<UserProfile />} />
         <Route path="/" element={<Home />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/course-reviews" element={<CourseReviews />} />
@@ -27,7 +27,6 @@ export default function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/admin/batch-progress" element={<AdminBatchProgress />} />
         <Route path="/admin/moderation" element={<AdminModeration />} />
-        <Route path="/profile" element={<Profile />} />
       </Route>
     </Routes>
   );

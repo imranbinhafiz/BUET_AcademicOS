@@ -7,6 +7,7 @@ const Joi = require('joi');
 const { verifyToken, optionalAuth } = require('../middleware/auth');
 const {
   getResources,
+  getUserResourceVersions,
   getResourceById,
   createResource,
   deleteResource,
@@ -16,6 +17,7 @@ const {
   deleteVote,
   getVersionHistory
 } = require('../models/resources');
+const { getCourses, createReport } = require('../models/courseReviews');
 
 // ---------------------------------------------------------------------
 // Multer setup
@@ -60,12 +62,19 @@ const upload = multer({
 const RESOURCE_TYPES = ['Slides', 'Previous Year Questions', 'Notes', 'Lab reports'];
 const SORT_OPTIONS = ['default', 'votes', 'downloads'];
 const ORDER_OPTIONS = ['asc', 'desc'];
+const COURSE_SORT_OPTIONS = ['rating', 'difficulty', 'name'];
 
 const resourceSchema = Joi.object({
   title: Joi.string().min(3).max(255).trim().required(),
   type: Joi.string().valid(...RESOURCE_TYPES).required(),
   course_code: Joi.string().max(20).trim().required(),
   parent_res_id: Joi.number().integer().positive().optional().allow(null)
+});
+
+const reportSchema = Joi.object({
+  target_type: Joi.string().valid('resource').required(),
+  target_id: Joi.number().integer().positive().required(),
+  reason: Joi.string().min(3).required()
 });
 
 // ---------------------------------------------------------------------
@@ -112,6 +121,49 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
+// GET /api/resources/courses
+// Course search used by the upload form's course picker.
+router.get('/courses', async (req, res) => {
+  try {
+    const { search, dept_code, sortBy, order } = req.query;
+
+    if (sortBy && !COURSE_SORT_OPTIONS.includes(sortBy)) {
+      return res.status(400).json({
+        message: `Invalid sortBy. Must be one of: ${COURSE_SORT_OPTIONS.join(', ')}`
+      });
+    }
+
+    if (order && !ORDER_OPTIONS.includes(order)) {
+      return res.status(400).json({
+        message: `Invalid order. Must be one of: ${ORDER_OPTIONS.join(', ')}`
+      });
+    }
+
+    const courses = await getCourses({ search, deptCode: dept_code, sortBy, order });
+    return res.json(courses);
+  } catch (err) {
+    console.error('Error fetching resource course suggestions:', err);
+    return res.status(500).json({ message: 'Server error while fetching courses' });
+  }
+});
+
+// GET /api/resources/my-versions?course_code=CSE204
+// Returns all versions owned by the authenticated uploader for one course.
+router.get('/my-versions', verifyToken, async (req, res) => {
+  const courseCode = String(req.query.course_code || '').trim();
+  if (!courseCode) {
+    return res.status(400).json({ message: 'course_code is required' });
+  }
+
+  try {
+    const versions = await getUserResourceVersions(req.user.user_id, courseCode);
+    return res.json(versions);
+  } catch (err) {
+    console.error('Error fetching user resource versions:', err);
+    return res.status(500).json({ message: 'Server error while fetching resource versions' });
+  }
+});
+
 // GET /api/resources/:id
 // Fetch a single resource's details
 router.get('/:id', optionalAuth, async (req, res) => {
@@ -123,19 +175,13 @@ router.get('/:id', optionalAuth, async (req, res) => {
       return res.status(404).json({ message: 'Resource not found' });
     }
 
-    const canSeeUnapproved = req.user && (
-      req.user.user_id === resource.user_id || req.user.role === 'admin'
-    );
-    if (resource.approval_status !== 'approved' && !canSeeUnapproved) {
-      return res.status(404).json({ message: 'Resource not found' });
-    }
-
     res.json(resource);
   } catch (err) {
     console.error('Error while getting resource by ID', err);
     res.status(500).json({ message: 'Server error while getting resource' });
   }
 });
+
 
 // GET /api/resources/:id/versions
 // Return the full version history (ancestors) of a resource, following
@@ -200,10 +246,32 @@ router.post(
         await fs.unlink(req.file.path).catch(() => {});
       }
       console.error('Error creating resource:', err);
-      return res.status(500).json({ message: 'Server error while creating resource' });
+      return res.status(err.status || 500).json({ message: err.status ? err.message : 'Server error while creating resource' });
     }
   }
 );
+
+// POST /api/resources/reports
+// Auth required. Creates a moderation report against a resource.
+router.post('/reports', verifyToken, async (req, res) => {
+  try {
+    const { error, value } = reportSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const report = await createReport({
+      targetType: value.target_type,
+      targetId: value.target_id,
+      reporterId: req.user.user_id,
+      reason: value.reason
+    });
+    return res.status(201).json(report);
+  } catch (err) {
+    console.error('Error creating resource report:', err);
+    return res.status(500).json({ message: 'Server error while creating report' });
+  }
+});
 
 // POST /api/resources/:id/download
 // Log a download and serve the file
@@ -213,11 +281,6 @@ router.post('/:id/download', verifyToken, async (req, res) => {
     const resource = await getResourceById(id);
 
     if (!resource || !resource.file_path) {
-      return res.status(404).json({ message: 'Resource or file not found' });
-    }
-
-    const canDownloadUnapproved = req.user.user_id === resource.user_id || req.user.role === 'admin';
-    if (resource.approval_status !== 'approved' && !canDownloadUnapproved) {
       return res.status(404).json({ message: 'Resource or file not found' });
     }
 
@@ -305,5 +368,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Server error while deleting resource' });
   }
 });
+
+
 
 module.exports = router;

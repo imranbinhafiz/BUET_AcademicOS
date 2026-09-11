@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import './CourseReviews.css';
 
 const API_BASE = 'http://localhost:5000/api/course-reviews';
 const COURSES_API = `${API_BASE}/courses`;
 const REVIEWS_API = `${API_BASE}/reviews`;
+const TOPICS_API = `${API_BASE}/courses`;
 const DEPARTMENTS_API = `${API_BASE}/departments`;
 const REPORTS_API = `${API_BASE}/reports`;
+const SERVER_ORIGIN = API_BASE.replace('/api/course-reviews', '');
 
 function getCurrentUser() {
   try {
@@ -30,12 +33,15 @@ export default function CourseReviews() {
   const [order, setOrder] = useState('desc');
 
   const [courses, setCourses] = useState([]);
+  const [courseSearchMatches, setCourseSearchMatches] = useState([]);
+  const [showCourseSearchSuggestions, setShowCourseSearchSuggestions] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [activeCourse, setActiveCourse] = useState(null);
   const [showWriteReview, setShowWriteReview] = useState(false);
+  const courseSearchBoxRef = useRef(null);
 
   const currentUser = getCurrentUser();
 
@@ -46,6 +52,33 @@ export default function CourseReviews() {
         if (Array.isArray(data)) setDepartments(data);
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const query = courseSearch.trim();
+    if (!query) {
+      setCourseSearchMatches([]);
+      return;
+    }
+    const timeoutId = setTimeout(() => {
+      fetch(`${COURSES_API}?search=${encodeURIComponent(query)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) setCourseSearchMatches(data.slice(0, 8));
+        })
+        .catch(() => setCourseSearchMatches([]));
+    }, 250);
+    return () => clearTimeout(timeoutId);
+  }, [courseSearch]);
+
+  useEffect(() => {
+    const handler = (event) => {
+      if (courseSearchBoxRef.current && !courseSearchBoxRef.current.contains(event.target)) {
+        setShowCourseSearchSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const fetchCourses = useCallback(async () => {
@@ -83,6 +116,7 @@ export default function CourseReviews() {
   const clearFilters = () => {
     setCourseSearch('');
     setDeptFilter('');
+    setShowCourseSearchSuggestions(false);
   };
 
   const hasActiveFilters = courseSearch || deptFilter;
@@ -111,23 +145,50 @@ export default function CourseReviews() {
         onCancel={() => setShowWriteReview(false)}
       />
 
-      <div className="p5-course-search-wrapper">
+      <div className="p5-course-search-wrapper p5-parent-search-wrapper" ref={courseSearchBoxRef}>
         <input
           type="text"
           placeholder="🔍 Search by course code, name, or teacher..."
           value={courseSearch}
-          onChange={(e) => setCourseSearch(e.target.value)}
+          onChange={(e) => {
+            setCourseSearch(e.target.value);
+            setShowCourseSearchSuggestions(true);
+          }}
+          onFocus={() => setShowCourseSearchSuggestions(true)}
+          autoComplete="off"
           className="p5-input p5-course-search-input"
         />
         {courseSearch && (
           <button
             type="button"
-            onClick={() => setCourseSearch('')}
+            onClick={() => {
+              setCourseSearch('');
+              setShowCourseSearchSuggestions(false);
+            }}
             className="p5-parent-clear-btn"
             aria-label="Clear course search"
           >
             ✕
           </button>
+        )}
+        {showCourseSearchSuggestions && courseSearchMatches.length > 0 && (
+          <ul className="p5-parent-suggestions">
+            {courseSearchMatches.map((course) => (
+              <li key={course.course_code}>
+                <button
+                  type="button"
+                  className="p5-parent-suggestion-item"
+                  onClick={() => {
+                    setCourseSearch(course.course_code);
+                    setShowCourseSearchSuggestions(false);
+                  }}
+                >
+                  <span className="p5-parent-suggestion-title">{course.title}</span>
+                  <span className="p5-parent-suggestion-meta">{course.course_code}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
@@ -152,6 +213,7 @@ export default function CourseReviews() {
         >
           <option value="name">Sort: Default</option>
           <option value="rating">Sort: Usefulness</option>
+          <option value="difficulty">Sort: Difficulty</option>
         </select>
 
         <button
@@ -169,11 +231,25 @@ export default function CourseReviews() {
         )}
       </div>
 
-      {loading && <p className="p5-empty-state">Loading courses...</p>}
+      {loading && courses.length === 0 && (
+        <div className="cr-courses-grid data-skeleton-grid" aria-label="Loading courses">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div className="cr-course-card data-skeleton-card" key={index}>
+              <span className="data-skeleton-line short" />
+              <span className="data-skeleton-line title" />
+              <span className="data-skeleton-line medium" />
+              <span className="data-skeleton-line footer" />
+            </div>
+          ))}
+        </div>
+      )}
       {error && <p className="p5-error">{error}</p>}
 
-      {!loading && !error && (
-        <div className="cr-courses-grid">
+      {!error && (courses.length > 0 || !loading) && (
+        <div
+          className={`cr-courses-grid${loading ? ' cr-courses-grid-refreshing' : ''}`}
+          aria-busy={loading}
+        >
           {courses.map((c) => (
             <div key={c.course_code} className="cr-course-card">
               {/* UPDATED: Added numerical difficulty score next to the text tag */}
@@ -224,6 +300,11 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
   const [showTeacherSuggestions, setShowTeacherSuggestions] = useState(false);
   const [selectedOffering, setSelectedOffering] = useState(null);
 
+  const [topicQuery, setTopicQuery] = useState('');
+  const [topicMatches, setTopicMatches] = useState([]);
+  const [selectedTopics, setSelectedTopics] = useState([]);
+  const [showTopicSuggestions, setShowTopicSuggestions] = useState(false);
+
   const [difficulty, setDifficulty] = useState(3);
   const [prereqUse, setPrereqUse] = useState(3);
   const [comment, setComment] = useState('');
@@ -235,6 +316,7 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
   const textareaRef = useRef(null);
   const courseBoxRef = useRef(null);
   const teacherBoxRef = useRef(null);
+  const topicBoxRef = useRef(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -269,6 +351,8 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
     setSelectedOffering(null);
     setTeacherQuery('');
     setOfferings([]);
+    setSelectedTopics([]);
+    setTopicQuery('');
   };
 
   const clearCourse = () => {
@@ -278,6 +362,8 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
     setSelectedOffering(null);
     setTeacherQuery('');
     setOfferings([]);
+    setSelectedTopics([]);
+    setTopicQuery('');
   };
 
   useEffect(() => {
@@ -315,12 +401,44 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
   };
 
   useEffect(() => {
+    if (!selectedCourse) {
+      setTopicMatches([]);
+      return;
+    }
+    const query = topicQuery.trim();
+    const timeoutId = setTimeout(() => {
+      fetch(`${TOPICS_API}/${selectedCourse.course_code}/topics?search=${encodeURIComponent(query)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setTopicMatches(data.filter((topic) => !selectedTopics.some((selected) => selected.name.toLowerCase() === topic.name.toLowerCase())));
+          }
+        })
+        .catch(() => setTopicMatches([]));
+    }, 200);
+    return () => clearTimeout(timeoutId);
+  }, [selectedCourse, topicQuery, selectedTopics]);
+
+  const addTopic = (topic) => {
+    const name = (typeof topic === 'string' ? topic : topic.name).trim();
+    if (!name || selectedTopics.some((selected) => selected.name.toLowerCase() === name.toLowerCase()) || selectedTopics.length >= 10) return;
+    setSelectedTopics((prev) => [...prev, { name }]);
+    setTopicQuery('');
+    setShowTopicSuggestions(false);
+  };
+
+  const removeTopic = (name) => setSelectedTopics((prev) => prev.filter((topic) => topic.name !== name));
+
+  useEffect(() => {
     const handler = (e) => {
       if (courseBoxRef.current && !courseBoxRef.current.contains(e.target)) {
         setShowCourseSuggestions(false);
       }
       if (teacherBoxRef.current && !teacherBoxRef.current.contains(e.target)) {
         setShowTeacherSuggestions(false);
+      }
+      if (topicBoxRef.current && !topicBoxRef.current.contains(e.target)) {
+        setShowTopicSuggestions(false);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -350,6 +468,7 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
       formData.append('difficulty', difficulty);
       formData.append('prereq_use', prereqUse);
       formData.append('comment', comment);
+      formData.append('topics', JSON.stringify(selectedTopics.map((topic) => topic.name)));
       if (file) formData.append('attachment', file);
 
       const response = await fetch(REVIEWS_API, {
@@ -366,6 +485,8 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
       setPrereqUse(3);
       setComment('');
       setFile(null);
+      setSelectedTopics([]);
+      setTopicQuery('');
 
       onSubmitted();
     } catch (err) {
@@ -406,23 +527,23 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
               ✕
             </button>
           )}
-        </div>
-        {showCourseSuggestions && !selectedCourse && courseMatches.length > 0 && (
-          <ul className="p5-parent-suggestions">
-            {courseMatches.map((c) => (
-              <li key={c.course_code}>
-                <button
-                  type="button"
-                  className="p5-parent-suggestion-item"
-                  onClick={() => pickCourse(c)}
-                >
-                  <span className="p5-parent-suggestion-title">{c.title}</span>
-                  <span className="p5-parent-suggestion-meta">{c.course_code}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+            {showCourseSuggestions && !selectedCourse && courseMatches.length > 0 && (
+              <ul className="p5-parent-suggestions">
+                {courseMatches.map((c) => (
+                  <li key={c.course_code}>
+                    <button
+                      type="button"
+                      className="p5-parent-suggestion-item"
+                      onClick={() => pickCourse(c)}
+                    >
+                      <span className="p5-parent-suggestion-title">{c.title}</span>
+                      <span className="p5-parent-suggestion-meta">{c.course_code}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         {selectedCourse && (
           <p className="p5-parent-selected-note">
             Selected: {selectedCourse.course_code} — {selectedCourse.title}
@@ -472,6 +593,61 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
                 </button>
               </li>
             ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="p5-parent-search-wrapper" ref={topicBoxRef}>
+        <label className="p5-label">Difficult Topics (Optional, up to 10)</label>
+        <div className="cr-topic-picker">
+          <div className="cr-topic-chips">
+            {selectedTopics.map((topic) => (
+              <span className="cr-topic-chip" key={topic.name}>
+                {topic.name}
+                <button type="button" onClick={() => removeTopic(topic.name)} aria-label={`Remove ${topic.name}`}>
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
+          <input
+            type="text"
+            className="p5-input"
+            placeholder={selectedCourse ? 'Type a topic and choose a suggestion...' : 'Choose a course first'}
+            value={topicQuery}
+            onChange={(e) => {
+              setTopicQuery(e.target.value);
+              setShowTopicSuggestions(true);
+            }}
+            onFocus={() => selectedCourse && setShowTopicSuggestions(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && topicQuery.trim()) {
+                e.preventDefault();
+                addTopic(topicQuery);
+              }
+            }}
+            disabled={!selectedCourse || selectedTopics.length >= 10}
+            autoComplete="off"
+          />
+        </div>
+        {showTopicSuggestions && topicQuery.trim() && selectedCourse && (
+          <ul className="p5-parent-suggestions">
+            {topicMatches.map((topic) => (
+              <li key={topic.topic_id}>
+                <button type="button" className="p5-parent-suggestion-item" onClick={() => addTopic(topic)}>
+                  <span className="p5-parent-suggestion-title">{topic.name}</span>
+                  <span className="p5-parent-suggestion-meta">ADD TOPIC</span>
+                </button>
+              </li>
+            ))}
+            {!topicMatches.some((topic) => topic.name.toLowerCase() === topicQuery.trim().toLowerCase()) && (
+              <li>
+                <button type="button" className="p5-parent-suggestion-item" onClick={() => addTopic(topicQuery)}>
+                  <span className="p5-parent-suggestion-title">{topicQuery.trim()}</span>
+                  <span className="p5-parent-suggestion-meta">NEW TOPIC</span>
+                </button>
+              </li>
+            )}
           </ul>
         )}
       </div>
@@ -548,24 +724,37 @@ function WriteReviewForm({ isOpen, onSubmitted, onCancel }) {
   );
 }
 
-function CourseReviewsModal({ courseCode, currentUser, onClose }) {
+export function CourseReviewsModal({ courseCode, reviewId, currentUser, onClose }) {
   const [downloadingId, setDownloadingId] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [flaggedTopics, setFlaggedTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
   const [reportingId, setReportingId] = useState(null);
   const [reportReason, setReportReason] = useState('');
+  // NEW: State to hold the validation error message
+  const [reportError, setReportError] = useState(''); 
 
+  const [reportedReviews, setReportedReviews] = useState(new Set());
   const [expandedReviews, setExpandedReviews] = useState(new Set());
   const MAX_REVIEW_LENGTH = 250;
 
-  // NEW: State to track both the sorting method AND the direction
   const [sortBy, setSortBy] = useState('date');
   const [order, setOrder] = useState('desc');
 
   useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchReviews = async () => {
       setLoading(true);
+      setError('');
       try {
         const headers = {};
         const token = localStorage.getItem('token');
@@ -582,7 +771,14 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
           throw new Error(data.message || 'Failed to load reviews');
         }
 
-        setReviews(data);
+        setReviews(reviewId ? data.filter((review) => String(review.review_id) === String(reviewId)) : data);
+
+        fetch(`${COURSES_API}/${courseCode}/flagged-topics`)
+          .then((topicResponse) => topicResponse.json())
+          .then((topicData) => {
+            if (Array.isArray(topicData)) setFlaggedTopics(topicData);
+          })
+          .catch(() => setFlaggedTopics([]));
       } catch (err) {
         setError(err.message);
       } finally {
@@ -591,7 +787,7 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
     };
 
     fetchReviews();
-  }, [courseCode]);
+  }, [courseCode, reviewId]);
 
   const handleVote = async (reviewId, value) => {
     const token = localStorage.getItem('token');
@@ -644,16 +840,11 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
         try {
           const data = await response.json();
           message = data.message || message;
-        } catch {
-          // res.download() never sent JSON on failure paths that don't hit this branch anyway
-        }
+        } catch { }
         throw new Error(message);
       }
 
       const blob = await response.blob();
-
-      // Pull the filename the server set via res.download()'s Content-Disposition
-      // header, falling back to something generic if it's ever missing.
       const disposition = response.headers.get('Content-Disposition') || '';
       const match = disposition.match(/filename="?([^"]+)"?/);
       const filename = match ? match[1] : `review-${reviewId}-attachment`;
@@ -674,7 +865,12 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
   };
 
   const handleReportSubmit = async (reviewId) => {
-    if (!reportReason.trim()) return;
+    if (!reportReason.trim()) {
+      setReportError('Please enter a reason for reporting.');
+      return;
+    }
+
+    setReportError(''); // Clear any previous errors
 
     const token = localStorage.getItem('token');
     try {
@@ -696,11 +892,13 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
         throw new Error(data.message || 'Failed to report');
       }
 
-      alert('Report submitted successfully. A moderator will review it.');
+      setReportedReviews((prev) => new Set(prev).add(reviewId));
       setReportingId(null);
       setReportReason('');
+      setReportError('');
     } catch (err) {
-      alert(err.message);
+      // UPDATED: Catch the error and set it to state instead of alerting
+      setReportError(err.message);
     }
   };
 
@@ -716,7 +914,6 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
     });
   };
 
-  // UPDATED: Dynamic calculation applies ASC or DESC based on the button state
   const sortedReviews = [...reviews].sort((a, b) => {
     let diff = 0;
     if (sortBy === 'date') {
@@ -728,11 +925,11 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
     } else if (sortBy === 'difficulty') {
       diff = Number(b.difficulty || 0) - Number(a.difficulty || 0);
     }
-    // Multiply by -1 to flip the array if the user wants Ascending
     return order === 'asc' ? -diff : diff;
   });
 
-  return (
+  return createPortal(
+    (
     <div className="cr-anilist-overlay" onClick={onClose}>
       <div className="cr-anilist-container" onClick={(e) => e.stopPropagation()}>
         <button className="cr-anilist-close-btn" onClick={onClose}>
@@ -753,7 +950,6 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
-                {/* Labels modified slightly to make sense in both ASC and DESC */}
                 <option value="date">Sort: Newest</option>
                 <option value="votes">Sort: Votes</option>
                 <option value="usefulness">Sort: Usefulness</option>
@@ -763,7 +959,7 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
               <button
                 type="button"
                 className="p5-order-btn"
-                style={{ padding: '0.4rem 0.85rem' }} // Slimmed down to match the input height
+                style={{ padding: '0.4rem 0.85rem' }}
                 onClick={() => setOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
               >
                 {order === 'asc' ? '↑ ASC' : '↓ DESC'}
@@ -772,8 +968,35 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
           )}
         </div>
 
-        <div className="cr-anilist-reviews-list">
-          {loading && <p className="p5-empty-state">Loading reviews...</p>}
+        <div className="cr-anilist-modal-body">
+          <aside className="cr-flagged-topics-panel">
+            <span className="cr-anilist-tag">MOST FLAGGED TOPICS</span>
+            {flaggedTopics.length === 0 ? (
+              <p className="cr-topic-empty">No topics flagged yet.</p>
+            ) : (
+              <ol className="cr-flagged-topics-list">
+                {flaggedTopics.map((topic) => (
+                  <li key={topic.topic_id}>
+                    <span>{topic.name}</span>
+                    <strong>{topic.flag_count}</strong>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </aside>
+
+          <div className="cr-anilist-reviews-list">
+          {loading && (
+            <div className="data-skeleton-review-list" aria-label="Loading reviews">
+              {Array.from({ length: 3 }, (_, index) => (
+                <div className="cr-anilist-card data-skeleton-review" key={index}>
+                  <span className="data-skeleton-line medium" />
+                  <span className="data-skeleton-line paragraph" />
+                  <span className="data-skeleton-line paragraph short" />
+                </div>
+              ))}
+            </div>
+          )}
           {error && <p className="p5-error">{error}</p>}
 
           {!loading && !error && reviews.length === 0 && (
@@ -784,11 +1007,11 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
             !error &&
             sortedReviews.map((review) => {
               const isExpanded = expandedReviews.has(review.review_id);
+              const comment = review.comment || '';
+              const lines = comment.split('\n');
+              const isLong = comment.length > MAX_REVIEW_LENGTH || lines.length > 4;
 
-              const lines = review.comment.split('\n');
-              const isLong = review.comment.length > MAX_REVIEW_LENGTH || lines.length > 4;
-
-              let displayText = review.comment;
+              let displayText = comment;
               if (!isExpanded && isLong) {
                 if (lines.length > 4) {
                   displayText = lines.slice(0, 4).join('\n') + '...';
@@ -803,7 +1026,11 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
                   <div className="cr-anilist-user-bar">
                     <div className="cr-anilist-author">
                       <div className="cr-anilist-avatar">
-                        {review.reviewer_name ? review.reviewer_name.charAt(0).toUpperCase() : 'A'}
+                        {review.reviewer_avatar_path ? (
+                          <img src={`${SERVER_ORIGIN}${review.reviewer_avatar_path}`} alt={review.reviewer_name || 'Reviewer'} />
+                        ) : (
+                          review.reviewer_name ? review.reviewer_name.charAt(0).toUpperCase() : 'A'
+                        )}
                       </div>
                       <div className="cr-anilist-user-info">
                         <span className="cr-author-name">{review.reviewer_name || 'Anonymous'}</span>
@@ -893,22 +1120,48 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
                   </div>
 
                   <div className="cr-anilist-actions">
-                    {currentUser && reportingId === review.review_id ? (
-                      <div className="cr-report-box">
-                        <input
-                          type="text"
-                          className="p5-input"
-                          placeholder="Reason for reporting..."
-                          value={reportReason}
-                          onChange={(e) => setReportReason(e.target.value)}
-                          autoFocus
-                        />
-                        <button className="cr-submit-btn" onClick={() => handleReportSubmit(review.review_id)}>SUBMIT</button>
-                        <button className="p5-versions-btn" onClick={() => setReportingId(null)}>CANCEL</button>
+                    {reportedReviews.has(review.review_id) ? (
+                      <span className="cr-report-success">
+                        ✅ Report submitted. A moderator will review it.
+                      </span>
+                    ) : currentUser && reportingId === review.review_id ? (
+                      
+                      /* UPDATED: Wrapped the report box in a column to display the error text below it */
+                      <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.4rem' }}>
+                        <div className="cr-report-box">
+                          <input
+                            type="text"
+                            className="p5-input"
+                            placeholder="Reason for reporting..."
+                            value={reportReason}
+                            onChange={(e) => {
+                              setReportReason(e.target.value);
+                              if (reportError) setReportError(''); // Clear error when they start typing
+                            }}
+                            autoFocus
+                          />
+                          <button className="cr-submit-btn" onClick={() => handleReportSubmit(review.review_id)}>SUBMIT</button>
+                          <button className="p5-versions-btn" onClick={() => {
+                            setReportingId(null);
+                            setReportError(''); // Clear error on cancel
+                          }}>CANCEL</button>
+                        </div>
+                        
+                        {/* Display the validation error if it exists */}
+                        {reportError && (
+                          <span style={{ color: '#ff6b6b', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                            {reportError}
+                          </span>
+                        )}
                       </div>
+
                     ) : (
                       currentUser && (
-                        <button className="cr-report-btn" onClick={() => setReportingId(review.review_id)}>
+                        <button className="cr-report-btn" onClick={() => {
+                          setReportingId(review.review_id);
+                          setReportReason('');
+                          setReportError(''); // Clear previous states when opening
+                        }}>
                           ⚑ Report
                         </button>
                       )
@@ -917,8 +1170,11 @@ function CourseReviewsModal({ courseCode, currentUser, onClose }) {
                 </div>
               );
             })}
+          </div>
         </div>
       </div>
     </div>
+    ),
+    document.body
   );
 }

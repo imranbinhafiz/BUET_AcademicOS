@@ -57,7 +57,7 @@ router.get('/unread-count', async (req, res) => {
 });
 
 // PATCH /api/notifications/read-all
-router.patch('/read-all', async (req, res) => {
+router.delete('/read-all', async (req, res) => {
   try {
     const updatedCount = await markAllNotificationsRead(req.activeUser.user_id);
     return res.json({ updated_count: updatedCount, unread_count: 0 });

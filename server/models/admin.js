@@ -67,8 +67,9 @@ async function listBatchProgress(deptCode) {
   return result.rows;
 }
 
-async function getBatchProgress(client, batchYear, deptCode) {
-  const result = await client.query(
+async function getBatchProgress(clientOrDb, batchYear, deptCode) {
+  const runner = clientOrDb || db;
+  const result = await runner.query(
     `${BATCH_PROGRESS_SELECT}
      WHERE bp.batch_year = $1 AND bp.dept_code = $2
      ${BATCH_PROGRESS_GROUP_BY}`,
@@ -161,35 +162,28 @@ async function advanceBatchProgress({
 }
 
 async function listModerationQueue() {
-  const [reports, resources] = await Promise.all([
-    db.query(
-      `SELECT
-         r.report_id, r.target_type, r.target_id, r.reason, r.created_at,
-         reporter.name AS reporter_name,
-         COALESCE(cr.comment, resource.title, '[Removed content]') AS target_preview,
-         COALESCE(cr.course_code, resource.course_code) AS course_code
-       FROM reports r
-       JOIN users reporter ON reporter.user_id = r.reporter_user_id
-       LEFT JOIN coursereview cr ON r.target_type = 'coursereview' AND cr.review_id = r.target_id
-       LEFT JOIN resources resource ON r.target_type = 'resource' AND resource.res_id = r.target_id
-       WHERE r.status = 'pending'
-       ORDER BY r.report_id DESC
-       LIMIT 50`
-    ),
-    db.query(
-      `SELECT
-         resource.res_id, resource.title, resource.type, resource.course_code,
-         resource.created_at, resource.approval_status, uploader.name AS uploader_name
-       FROM resources resource
-       JOIN users uploader ON uploader.user_id = resource.user_id
-       WHERE resource.approval_status = 'pending'
-       ORDER BY resource.res_id DESC
-       LIMIT 50`
-    )
-  ]);
+  const reports = await db.query(
+    `SELECT
+       r.report_id, r.target_type, r.target_id, r.reason, r.created_at,
+       reporter.name AS reporter_name,
+       COALESCE(cr.comment, resource.title, '[Removed content]') AS target_preview,
+       COALESCE(cr.course_code, resource.course_code) AS course_code
+     FROM reports r
+     JOIN users reporter ON reporter.user_id = r.reporter_user_id
+     LEFT JOIN coursereviews cr ON r.target_type = 'coursereview' AND cr.review_id = r.target_id
+     LEFT JOIN resources resource ON r.target_type = 'resource' AND resource.res_id = r.target_id
+     WHERE r.status = 'pending'
+       AND (cr.review_id IS NOT NULL OR resource.res_id IS NOT NULL)
+     ORDER BY r.report_id DESC
+     LIMIT 50`
+  );
 
-  return { reports: reports.rows, resources: resources.rows };
+  return { reports: reports.rows };
 }
+
+// ---------------------------------------------------------------------
+// MODERATION FUNCTIONS
+// ---------------------------------------------------------------------
 
 async function resolveReport({ reportId, status, resolutionNote, actorUserId }) {
   const result = await db.query(
@@ -205,25 +199,89 @@ async function resolveReport({ reportId, status, resolutionNote, actorUserId }) 
   return result.rows[0] || null;
 }
 
-async function moderateResource({ resourceId, approvalStatus, moderationNote, actorUserId }) {
-  const result = await db.query(
-    `UPDATE resources
-     SET approval_status = $2,
-         moderation_note = $3,
-         moderated_by_user_id = $4,
-         moderated_at = CURRENT_TIMESTAMP
-     WHERE res_id = $1 AND approval_status = 'pending'
-     RETURNING res_id, approval_status, moderation_note, moderated_at`,
-    [resourceId, approvalStatus, moderationNote || null, actorUserId]
-  );
-  return result.rows[0] || null;
+async function deleteReportedContent({ reportId, customMessage, actorUserId }) {
+  const client = await db.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // 1. Fetch the triggered report to get the target ID and type
+    const reportRes = await client.query('SELECT target_type, target_id FROM reports WHERE report_id = $1', [reportId]);
+    
+    if (reportRes.rows.length === 0) {
+      throw new Error('REPORT_NOT_FOUND');
+    }
+    
+    const report = reportRes.rows[0];
+    let ownerId = null;
+
+    // 2. Fetch ALL pending reporters who flagged this specific content
+    const reportersRes = await client.query(
+      `SELECT report_id, reporter_user_id FROM reports 
+       WHERE target_type = $1 AND target_id = $2 AND status = 'pending'`,
+      [report.target_type, report.target_id]
+    );
+    const reporters = reportersRes.rows;
+
+    // 3. Locate the owner and delete the content based on its type
+    if (report.target_type === 'coursereview') {
+      const reviewRes = await client.query('SELECT user_id FROM coursereviews WHERE review_id = $1', [report.target_id]);
+      if (reviewRes.rows.length > 0) ownerId = reviewRes.rows[0].user_id;
+      
+      await client.query('DELETE FROM coursereviews WHERE review_id = $1', [report.target_id]);
+      
+    } else if (report.target_type === 'resource') {
+      const resourceRes = await client.query('SELECT user_id FROM resources WHERE res_id = $1', [report.target_id]);
+      if (resourceRes.rows.length > 0) ownerId = resourceRes.rows[0].user_id;
+      
+      await client.query('DELETE FROM resources WHERE res_id = $1', [report.target_id]);
+    }
+
+    // 4. Dispatch the personalized notification to the user who posted the content
+    if (ownerId) {
+      await client.query(
+        `INSERT INTO notifications (user_id, type, message, related_id) VALUES ($1, $2, $3, $4)`,
+        [ownerId, 'content_deleted', `ADMIN MESSAGE regarding deleted content: ${customMessage}`, reportId]
+      );
+    }
+
+    // 5. Dispatch notifications to ALL users who reported the content
+    for (const r of reporters) {
+      await client.query(
+        `INSERT INTO notifications (user_id, type, message, related_id) VALUES ($1, $2, $3, $4)`,
+        [r.reporter_user_id, 'report_resolved', 'Action taken: The content you reported has been permanently removed by an administrator.', r.report_id]
+      );
+    }
+
+    // 6. Bulk update ALL pending reports for this content to 'reviewed'
+    // This removes them from listModerationQueue (which only selects 'pending') while keeping the audit trail.
+    await client.query(
+      `UPDATE reports
+       SET status = 'reviewed',
+           resolution_note = 'Content deleted manually by admin',
+           reviewed_by_user_id = $1,
+           reviewed_at = CURRENT_TIMESTAMP
+       WHERE target_type = $2 AND target_id = $3 AND status = 'pending'`,
+      [actorUserId, report.target_type, report.target_id]
+    );
+
+    await client.query('COMMIT');
+    return true;
+    
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 module.exports = {
   listBatchProgress,
+  getBatchProgress,
   getBatchProgressHistory,
   advanceBatchProgress,
   listModerationQueue,
   resolveReport,
-  moderateResource
+  deleteReportedContent // <-- Add the export here
 };

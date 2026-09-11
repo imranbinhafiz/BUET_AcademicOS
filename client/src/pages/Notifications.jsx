@@ -104,12 +104,12 @@ export default function Notifications() {
     }
   };
 
-  const markAllRead = async () => {
+  const deleteAll = async () => {
     setMarkingAll(true);
     setError('');
     try {
-      await getJson(await fetch(`${API_BASE}/read-all`, { method: 'PATCH', headers }));
-      setNotifications((current) => current.map((notification) => ({ ...notification, is_read: true })));
+      await getJson(await fetch(`${API_BASE}/read-all`, { method: 'DELETE', headers }));
+      setNotifications([]); // Instantly clears the list in the UI
       await refreshUnreadCount();
     } catch (err) {
       setError(err.message);
@@ -132,8 +132,8 @@ export default function Notifications() {
           <h2>NOTIFICATIONS</h2>
           <p>Only messages addressed to your account appear here. Opening one does not mark every other message as read.</p>
         </div>
-        <button type="button" className="notifications-mark-all" disabled={markingAll || unreadCount === 0} onClick={markAllRead}>
-          {markingAll ? 'MARKING...' : `MARK ALL READ${unreadCount ? ` (${unreadCount})` : ''}`}
+        <button type="button" className="notifications-mark-all" disabled={markingAll || notifications.length === 0} onClick={deleteAll}>
+          {markingAll ? 'DELETING...' : 'DELETE ALL NOTIFICATIONS'}
         </button>
       </div>
 

@@ -42,14 +42,18 @@ const performanceRoutes = require('./routes/performance');
 const adminRoutes = require('./routes/admin');
 const notificationRoutes = require('./routes/notifications');
 const profileRoutes = require('./routes/profile');
+const topContributorsRoutes = require('./routes/topContributors');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/course-reviews', courseReviewsRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/top-contributors' , topContributorsRoutes)
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/profile', profileRoutes);
+
+
 
 // Root route
 app.get('/', (req, res) => {

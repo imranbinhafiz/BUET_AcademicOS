@@ -2,10 +2,29 @@
   margin: 0 auto;
   max-width: 1120px;
   padding-bottom: 2.5rem;
+  font-family: var(--font-p5);
 }
 
+/* Form controls and buttons don't inherit font-family from ancestors by
+   default (browser UA stylesheets reset them) — set explicitly so the
+   whole page, including inputs/selects/buttons, stays on Rajdhani. */
+.admin-page button,
+.admin-page select,
+.admin-page textarea,
+.admin-page input {
+  font-family: var(--font-p5);
+}
+
+/* Self-contained header styling — matches CourseReviews' .p5-page-header
+   look (red underline, bold uppercase title) without depending on
+   CourseReviews.css actually being loaded on this route. */
 .admin-header {
-  margin-bottom: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 3px solid var(--p5-red);
+  padding-bottom: 0.75rem;
 }
 
 .admin-header h2,
@@ -14,6 +33,9 @@
 .admin-confirm-card h3,
 .admin-history-heading h3 {
   color: #fff;
+  font-family: var(--font-p5);
+  letter-spacing: 1px;
+  text-transform: uppercase;
   margin: 0.15rem 0 0.45rem;
 }
 
@@ -29,9 +51,11 @@
 
 .admin-kicker {
   color: var(--p5-red);
+  font-family: var(--font-p5);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.14em;
+  text-transform: uppercase;
   margin: 0 0 0.25rem;
 }
 
@@ -40,6 +64,7 @@
 .admin-empty,
 .admin-access-card {
   border: 1px solid var(--p5-border);
+  border-radius: 6px;
   margin: 1rem 0;
   padding: 1rem 1.15rem;
 }
@@ -66,6 +91,8 @@
 .admin-summary-card {
   background: var(--p5-card-bg);
   border: 1px solid var(--p5-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .admin-access-card {
@@ -86,19 +113,29 @@
 .admin-history-item span,
 .admin-history-heading > span {
   color: var(--p5-text-muted);
+  font-family: var(--font-p5);
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .admin-batch-picker select,
 .admin-confirm-card textarea {
-  background: #161618;
+  background: #111;
   border: 1px solid var(--p5-border);
+  border-radius: 4px;
   color: var(--p5-text-main);
   font-family: var(--font-p5);
   font-size: 1rem;
   padding: 0.7rem 0.75rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.admin-batch-picker select:focus,
+.admin-confirm-card textarea:focus {
+  border-color: var(--p5-red);
 }
 
 .admin-summary-grid {
@@ -113,6 +150,7 @@
   gap: 0.4rem;
   min-height: 135px;
   padding: 1.1rem;
+  transition: border-color 0.2s ease;
 }
 
 .admin-summary-card.featured {
@@ -121,6 +159,7 @@
 
 .admin-summary-card strong {
   color: #fff;
+  font-family: var(--font-p5);
   font-size: clamp(1.7rem, 3vw, 2.25rem);
 }
 
@@ -146,6 +185,7 @@
 .admin-confirm-card {
   align-items: stretch;
   display: grid;
+  border-color: var(--p5-red);
 }
 
 .admin-confirm-card label {
@@ -154,7 +194,7 @@
 }
 
 .admin-confirm-card textarea {
-  font-family: var(--font-body);
+  font-family: var(--font-p5);
   line-height: 1.45;
   min-height: 82px;
   resize: vertical;
@@ -167,33 +207,46 @@
   justify-content: flex-end;
 }
 
-.admin-primary-button,
-.admin-secondary-button {
-  border: 1px solid var(--p5-border);
-  cursor: pointer;
+/* Primary action — solid red fill, matches .p5-btn / .p5-action-btn */
+.admin-primary-button {
   font-family: var(--font-p5);
+  text-transform: uppercase;
   font-weight: 800;
   letter-spacing: 0.06em;
-  padding: 0.7rem 1rem;
-}
-
-.admin-primary-button {
+  border: 1px solid var(--p5-red);
+  border-radius: 4px;
   background: var(--p5-red);
   color: #fff;
-}
-
-.admin-secondary-button {
-  background: transparent;
-  color: var(--p5-text-muted);
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .admin-primary-button:hover:not(:disabled) {
-  filter: brightness(1.14);
+  background: var(--p5-red-hover);
+  border-color: var(--p5-red-hover);
+}
+
+/* Secondary/cancel action — black fill, red border + text, matches
+   CourseReviews' .p5-versions-btn "Cancel" style. */
+.admin-secondary-button {
+  font-family: var(--font-p5);
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--p5-red);
+  border-radius: 4px;
+  background: #0f0f0f;
+  color: var(--p5-red);
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .admin-secondary-button:hover:not(:disabled) {
-  border-color: var(--p5-red);
-  color: #fff;
+  background: #1a1a1a;
+  border-color: var(--p5-red-hover);
+  color: var(--p5-red-hover);
 }
 
 .admin-primary-button:disabled,
@@ -227,6 +280,11 @@
   gap: 1rem;
   grid-template-columns: 1.15fr 1.8fr 0.8fr 0.8fr 1.3fr;
   padding: 0.95rem 1.15rem;
+  transition: background-color 0.15s ease;
+}
+
+.admin-history-item:hover {
+  background-color: rgba(255, 255, 255, 0.03);
 }
 
 .admin-history-item:last-child {
@@ -243,6 +301,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+  font-family: var(--font-p5);
 }
 
 .admin-history-transition strong {

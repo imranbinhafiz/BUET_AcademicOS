@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const db = require('../db');
+const { verifyToken } = require('../middleware/auth');
 
 // Predetermined list of valid batch years — keep this in sync with the
 // frontend's BATCHES list in Auth.jsx.
@@ -27,6 +28,11 @@ const registerSchema = Joi.object({
 const loginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).max(100).required()
+});
+
+const passwordChangeSchema = Joi.object({
+  currentPassword: Joi.string().min(6).max(100).required(),
+  newPassword: Joi.string().min(6).max(100).required()
 });
 
 router.post('/register', async (req, res) => {
@@ -122,6 +128,29 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login Error:', err);
     res.status(500).json({ message: 'Server error during login' });
+  }
+});
+
+router.patch('/password', verifyToken, async (req, res) => {
+  try {
+    const { error, value } = passwordChangeSchema.validate(req.body);
+    if (error) return res.status(400).json({ message: error.details[0].message });
+
+    const result = await db.query(
+      'SELECT password FROM users WHERE user_id = $1 AND deleted_at IS NULL',
+      [req.user.user_id]
+    );
+    const user = result.rows[0];
+    if (!user || !(await bcrypt.compare(value.currentPassword, user.password))) {
+      return res.status(400).json({ message: 'Current password is incorrect.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(value.newPassword, 10);
+    await db.query('UPDATE users SET password = $1 WHERE user_id = $2', [hashedPassword, req.user.user_id]);
+    return res.json({ message: 'Password updated successfully.' });
+  } catch (err) {
+    console.error('Password update error:', err);
+    return res.status(500).json({ message: 'Server error updating password.' });
   }
 });
 

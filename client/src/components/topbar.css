@@ -11,7 +11,7 @@
 }
 
 .topbar-breadcrumb {
-  font-family: monospace;
+  font-family: var(--font-p5, 'Rajdhani', sans-serif);
   font-weight: 900;
   font-size: 0.9rem;
   letter-spacing: 1.5px;

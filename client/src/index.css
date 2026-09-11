@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700;800&display=swap');
+
 /* GLOBAL BASE RESET */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -8,11 +10,37 @@
 html, body {
   width: 100%;
   min-height: 100vh;
+  scrollbar-gutter: stable;
   background-color: #0c0c0e; /* Match main background to prevent white flashes */
   color: #d4d4d8;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: 'Rajdhani', 'Trebuchet MS', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Shared scrollbar treatment used by the review modal and profile panels. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d91a29 #111;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #111;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #d91a29;
+  border: 2px solid #111;
+  border-radius: 6px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #f02a3a;
 }
 
 #root {
@@ -21,8 +49,154 @@ html, body {
   flex-direction: column;
 }
 
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.p5-route-transition,
+.p5-wrapper {
+  animation: page-enter 320ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p5-route-transition,
+  .p5-wrapper {
+    animation: none;
+  }
+}
+
+@keyframes data-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.data-skeleton-line,
+.data-skeleton-block,
+.data-skeleton-circle {
+  display: block;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 25%, rgba(255, 255, 255, 0.14) 50%, rgba(255, 255, 255, 0.06) 75%);
+  background-size: 200% 100%;
+  animation: data-skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+.data-skeleton-line {
+  width: 100%;
+  height: 0.8rem;
+  border-radius: 3px;
+}
+
+.data-skeleton-line.short { width: 28%; }
+.data-skeleton-line.medium { width: 58%; }
+.data-skeleton-line.title { width: 72%; height: 1.15rem; }
+.data-skeleton-line.footer { width: 44%; margin-top: auto; }
+.data-skeleton-line.paragraph { width: 92%; }
+
+.data-skeleton-grid {
+  min-height: 420px;
+}
+
+.data-skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.data-skeleton-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.data-skeleton-review {
+  min-height: 150px;
+  justify-content: space-around;
+}
+
+.data-skeleton-review:nth-child(2) { animation-delay: 90ms; }
+.data-skeleton-review:nth-child(3) { animation-delay: 180ms; }
+
+.data-skeleton-row {
+  cursor: default;
+  pointer-events: none;
+}
+
+.data-skeleton-circle {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 50%;
+}
+
+.data-skeleton-row .name {
+  width: 35%;
+  flex: 1;
+}
+
+.data-skeleton-row .stat {
+  width: 16%;
+}
+
+.data-skeleton-row .points {
+  width: 12%;
+}
+
+.data-skeleton-resource {
+  min-height: 82px;
+  align-items: center;
+  pointer-events: none;
+}
+
+.data-skeleton-block.badge {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 4px;
+}
+
+.data-skeleton-resource-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.data-skeleton-resource .action {
+  width: 92px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .data-skeleton-line,
+  .data-skeleton-block,
+  .data-skeleton-circle {
+    animation: none;
+  }
+
+  .cr-anilist-overlay,
+  .cr-anilist-container {
+    animation: none;
+  }
+}
+
 /* Remove default link underline behavior globally */
 a {
   color: inherit;
   text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
