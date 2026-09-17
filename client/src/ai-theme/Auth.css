@@ -1,0 +1,163 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500&display=swap');
+
+:root {
+  --p5-black: #0d0d0f;
+  --p5-card-bg: rgba(22, 22, 26, 0.92);
+  --p5-red: #b91522;
+  --p5-red-hover: #d91a29;
+  --p5-text-main: #e4e4e7;
+  --p5-text-muted: #94949e;
+  --p5-border: #3f3f46;
+  
+  /* FONT STACKS */
+  --font-p5: 'Rajdhani', 'Trebuchet MS', sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.p5-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 1rem;
+  box-sizing: border-box;
+  font-family: var(--font-p5);
+  
+  background-image: linear-gradient(
+      rgba(13, 13, 15, 0.55), 
+      rgba(13, 13, 15, 0.75)
+    ), 
+    url('../assets/auth-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.p5-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  background-color: var(--p5-card-bg);
+  border: 1px solid var(--p5-border);
+  padding: 2.5rem 2rem 2rem 2rem;
+  box-shadow: 6px 6px 0px rgba(185, 21, 34, 0.85);
+  box-sizing: border-box;
+  backdrop-filter: blur(6px);
+}
+
+.p5-card-tag {
+  position: absolute;
+  top: -11px;
+  left: 18px;
+  background-color: var(--p5-red);
+  color: var(--p5-text-main);
+  padding: 2px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  font-family: var(--font-p5);
+}
+
+.p5-title {
+  color: var(--p5-text-main);
+  font-family: var(--font-p5);
+  font-weight: 700;
+  font-size: 1.7rem;
+  margin: 0 0 1.5rem 0;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--p5-red);
+  padding-bottom: 0.4rem;
+}
+
+.p5-label {
+  display: block;
+  color: var(--p5-text-muted);
+  font-family: var(--font-p5);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 1.5px;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.p5-input {
+  width: 100%;
+  height: 42px;
+  background-color: rgba(9, 9, 11, 0.9);
+  border: 1px solid #3f3f46;
+  color: var(--p5-text-main);
+  padding: 0 0.75rem;
+  font-size: 0.95rem;
+  font-family: var(--font-body);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.p5-input:focus {
+  border-color: var(--p5-red);
+  background-color: rgba(9, 9, 11, 0.98);
+}
+
+select.p5-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394949e'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 1.2rem;
+  padding-right: 2rem;
+}
+
+.p5-btn {
+  width: 100%;
+  height: 44px;
+  margin-top: 0.5rem;
+  background-color: #27272a;
+  color: var(--p5-text-main);
+  border: 1px solid #3f3f46;
+  font-family: var(--font-p5);
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.p5-btn:hover:not(:disabled) {
+  background-color: var(--p5-red);
+  color: #ffffff;
+  border-color: var(--p5-red);
+  transform: translateY(-2px);
+}
+
+.p5-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.p5-error {
+  background-color: rgba(63, 9, 13, 0.9);
+  color: #fca5a5;
+  padding: 0.6rem;
+  font-size: 0.85rem;
+  font-family: var(--font-body);
+  margin-bottom: 1rem;
+  border-left: 3px solid var(--p5-red);
+}
+
+.p5-link {
+  color: var(--p5-text-muted);
+  font-family: var(--font-p5);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 1.5px;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.p5-link:hover {
+  color: var(--p5-text-main);
+  text-decoration: underline;
+}

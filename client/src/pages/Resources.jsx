@@ -13,7 +13,7 @@ const COURSES_API = `${API_BASE}/courses`;
 const MY_VERSIONS_API = `${API_BASE}/my-versions`;
 
 export default function Resources() {
-  const [activeType, setActiveType] = useState(null);
+  const [activeType, setActiveType] = useState(RESOURCE_TYPES[0].type);
   const [courseSearch, setCourseSearch] = useState('');
   const [sortBy, setSortBy] = useState('default');
   const [order, setOrder] = useState('desc');
@@ -378,13 +378,17 @@ export default function Resources() {
   };
 
   return (
-    <>
-      <div className="res-page-header">
-        <h2>RESOURCES ARCHIVE</h2>
+    <section className="resources-page">
+      <header className="res-page-header">
+        <div>
+          <p className="res-kicker">KNOWLEDGE LIBRARY</p>
+          <h2>Resources, made useful.</h2>
+          <span>Find curated notes, slides, past questions, and versioned files by course.</span>
+        </div>
         <button className="res-action-btn" onClick={() => setShowUploadForm((prev) => !prev)}>
           {showUploadForm ? 'CANCEL' : '+ UPLOAD RESOURCE'}
         </button>
-      </div>
+      </header>
 
       <form
         onSubmit={handleUploadSubmit}
@@ -551,6 +555,14 @@ export default function Resources() {
         </button>
       </form>
 
+      <div className="res-toolbar-heading">
+        <div>
+          <p className="res-kicker">BROWSE THE LIBRARY</p>
+          <h3>What are you looking for?</h3>
+        </div>
+        <span>{activeType ? `${activeType} selected` : 'All resource types'}</span>
+      </div>
+
       <div className="res-type-grid">
         {RESOURCE_TYPES.map((t) => (
           <button
@@ -612,6 +624,7 @@ export default function Resources() {
       </div>
 
       <div className="res-sort-bar">
+        <span className="res-sort-label">ORDER RESULTS</span>
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
@@ -650,6 +663,10 @@ export default function Resources() {
 
       {!loading && !error && (
         <div className="res-resource-list">
+          <div className="res-results-summary">
+            <span>{resources.length} {resources.length === 1 ? 'resource' : 'resources'} found</span>
+            <span>{courseSearch ? `Matching ${courseSearch}` : 'Across AcademicOS'}</span>
+          </div>
           {resources.map((res) => (
             <div key={res.res_id} className="res-resource-card-wrapper">
               <div className="res-resource-card">
@@ -780,6 +797,6 @@ export default function Resources() {
           )}
         </div>
       )}
-    </>
+    </section>
   );
 }

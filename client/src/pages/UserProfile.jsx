@@ -2,12 +2,10 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './UserProfile.css'; 
 import { CourseReviewsModal } from './CourseReviews';
-
-const API_BASE = 'http://localhost:5000/api';
-const SERVER_ORIGIN = API_BASE.replace('/api', '');
+import { apiUrl, assetUrl } from '../api';
 
 function getAvatarUrl(avatarPath) {
-  return avatarPath ? `${SERVER_ORIGIN}${avatarPath}` : null;
+  return assetUrl(avatarPath);
 }
 
 export default function UserProfile() {
@@ -65,7 +63,7 @@ export default function UserProfile() {
       setLoadingProfile(true);
       setError('');
       try {
-        const response = await fetch(`${API_BASE}/profile/${userId}`);
+        const response = await fetch(apiUrl(`/profile/${userId}`));
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Failed to load profile');
         setProfile(data);
@@ -84,7 +82,7 @@ export default function UserProfile() {
     setSavingBio(true);
     setBioError('');
     try {
-      const response = await fetch(`${API_BASE}/profile/${userId}`, {
+      const response = await fetch(apiUrl(`/profile/${userId}`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -112,7 +110,7 @@ export default function UserProfile() {
     const formData = new FormData();
     formData.append('avatar', file);
     try {
-      const response = await fetch(`${API_BASE}/profile/${userId}/avatar`, {
+      const response = await fetch(apiUrl(`/profile/${userId}/avatar`), {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: formData
@@ -140,7 +138,7 @@ export default function UserProfile() {
     }
     setSavingPassword(true);
     try {
-      const response = await fetch(`${API_BASE}/auth/password`, {
+      const response = await fetch(apiUrl('/auth/password'), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ currentPassword: passwordDraft.currentPassword, newPassword: passwordDraft.newPassword })
@@ -165,7 +163,7 @@ export default function UserProfile() {
       params.append('sortBy', resSortBy);
       params.append('order', resOrder);
 
-      const response = await fetch(`${API_BASE}/profile/${userId}/resources?${params.toString()}`);
+      const response = await fetch(apiUrl(`/profile/${userId}/resources?${params.toString()}`));
       const data = await response.json();
       if (response.ok) setUploads(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -189,7 +187,7 @@ export default function UserProfile() {
       params.append('sortBy', revSortBy);
       params.append('order', revOrder);
 
-      const response = await fetch(`${API_BASE}/profile/${userId}/reviews?${params.toString()}`);
+      const response = await fetch(apiUrl(`/profile/${userId}/reviews?${params.toString()}`));
       const data = await response.json();
       if (response.ok) setReviews(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -207,7 +205,7 @@ export default function UserProfile() {
   // Download Handler (Reused from Resources page)
   const handleDownload = async (resId, title) => {
     try {
-      const response = await fetch(`${API_BASE}/resources/${resId}/download`, {
+      const response = await fetch(apiUrl(`/resources/${resId}/download`), {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
@@ -231,7 +229,7 @@ export default function UserProfile() {
     const token = localStorage.getItem('token');
     if (!token) return alert('Please log in to vote.');
     try {
-      const response = await fetch(`${API_BASE}/resources/${resId}/vote`, {
+      const response = await fetch(apiUrl(`/resources/${resId}/vote`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ value })
@@ -250,7 +248,7 @@ export default function UserProfile() {
     const token = localStorage.getItem('token');
     if (!token) return alert('Please log in to vote.');
     try {
-      const response = await fetch(`${API_BASE}/course-reviews/reviews/${reviewId}/vote`, {
+      const response = await fetch(apiUrl(`/course-reviews/reviews/${reviewId}/vote`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ value })
@@ -269,17 +267,24 @@ export default function UserProfile() {
   if (error) return <div className="prof-page"><p className="prof-error">{error}</p></div>;
   if (!profile) return <div className="prof-page"><p className="prof-empty-state">Profile not found.</p></div>;
 
+  const resourceVotes = uploads.reduce((total, upload) => total + Number(upload.vote_tally || 0), 0);
+  const reviewVotes = reviews.reduce((total, review) => total + Number(review.vote_tally || 0), 0);
+
   return (
-    <div className="prof-page">
-      <button className="prof-back-btn" onClick={() => navigate(-1)}>
-        ← BACK
-      </button>
+    <div className="prof-page prof-page-upgraded">
+      <header className="prof-page-topline">
+        <button className="prof-back-btn" onClick={() => navigate(-1)}>
+          ← BACK
+        </button>
+        <p className="prof-context-label">{isOwnProfile ? 'MY ACADEMIC SPACE' : 'CONTRIBUTOR PROFILE'}</p>
+      </header>
 
       <div className={`prof-layout ${expandedResources || expandedReviews ? 'has-expanded-section' : ''}`}>
         
         {/* LEFT SIDEBAR: Avatar & Identity */}
         <aside className="prof-sidebar">
-          <div className={`prof-avatar ${isOwnProfile ? 'prof-avatar-editable' : ''}`} onClick={() => isOwnProfile && avatarInputRef.current?.click()} role={isOwnProfile ? 'button' : undefined} tabIndex={isOwnProfile ? 0 : undefined} onKeyDown={(event) => { if (isOwnProfile && (event.key === 'Enter' || event.key === ' ')) avatarInputRef.current?.click(); }}>
+          <div className="prof-avatar-frame">
+            <div className={`prof-avatar ${isOwnProfile ? 'prof-avatar-editable' : ''}`} onClick={() => isOwnProfile && avatarInputRef.current?.click()} role={isOwnProfile ? 'button' : undefined} tabIndex={isOwnProfile ? 0 : undefined} onKeyDown={(event) => { if (isOwnProfile && (event.key === 'Enter' || event.key === ' ')) avatarInputRef.current?.click(); }}>
             {getAvatarUrl(profile.avatar_path) ? (
               <img src={getAvatarUrl(profile.avatar_path)} alt={profile.name} />
             ) : (
@@ -289,16 +294,34 @@ export default function UserProfile() {
               <span className="prof-avatar-edit-label">Change</span>
               <input ref={avatarInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleAvatarChange} hidden />
             </>}
+            </div>
+            {isOwnProfile && <span className="prof-avatar-hint">Click to replace · JPG, PNG, WebP or GIF · max 2 MB</span>}
           </div>
           {avatarError && <p className="prof-inline-error">{avatarError}</p>}
           <div className="prof-identity">
+            <p className="prof-eyebrow">{isOwnProfile ? 'YOUR PROFILE' : 'ACADEMICOS MEMBER'}</p>
             <h1 className="prof-name">{profile.name}</h1>
             <p className="prof-meta"><span aria-hidden="true">✉</span> {profile.email || 'Email not public'}</p>
+          </div>
+          <div className="prof-profile-note">
+            <span className="prof-status-dot" aria-hidden="true" />
+            <span>{isOwnProfile ? 'Your profile is visible to the AcademicOS community.' : 'Community contributor'}</span>
           </div>
         </aside>
 
         {/* RIGHT PANEL: Bio & Contributions */}
         <main className="prof-main">
+          <section className="prof-hero-copy">
+            <p className="prof-eyebrow">{isOwnProfile ? 'PERSONAL DASHBOARD' : 'CONTRIBUTION SNAPSHOT'}</p>
+            <h2>{isOwnProfile ? 'Keep your academic identity up to date.' : `${profile.name}'s academic footprint.`}</h2>
+            <p>{isOwnProfile ? 'Your uploads and reviews make the library more useful for every batch.' : 'Browse this member’s shared resources and course experience below.'}</p>
+          </section>
+
+          <section className="prof-stat-grid" aria-label="Contribution summary">
+            <div className="prof-stat-card"><span>Resources</span><strong>{uploads.length}</strong><small>shared materials</small></div>
+            <div className="prof-stat-card"><span>Reviews</span><strong>{reviews.length}</strong><small>course insights</small></div>
+            <div className="prof-stat-card"><span>Helpful votes</span><strong>{resourceVotes + reviewVotes}</strong><small>across contributions</small></div>
+          </section>
           
           <div className="prof-bio-section">
             <div className="prof-section-heading">
@@ -324,9 +347,13 @@ export default function UserProfile() {
 
           {isOwnProfile && (
             <div className="prof-account-section">
-              <button className="prof-edit-btn" onClick={() => { setShowPasswordForm((open) => !open); setPasswordError(''); setPasswordMessage(''); }}>
-                {showPasswordForm ? 'Cancel password change' : 'Change password'}
-              </button>
+              <div className="prof-section-heading">
+                <div><p className="prof-eyebrow">ACCOUNT SECURITY</p><h3>Keep your account secure</h3></div>
+                <button className="prof-edit-btn" onClick={() => { setShowPasswordForm((open) => !open); setPasswordError(''); setPasswordMessage(''); }}>
+                  {showPasswordForm ? 'Close' : 'Change password'}
+                </button>
+              </div>
+              {!showPasswordForm && <p className="prof-security-copy">Use a password only you know. Your current password is required before it can be changed.</p>}
               {showPasswordForm && <form className="prof-password-form" onSubmit={handlePasswordSubmit}>
                 <input type="password" placeholder="Current password" value={passwordDraft.currentPassword} onChange={(event) => setPasswordDraft({ ...passwordDraft, currentPassword: event.target.value })} minLength={6} required />
                 <input type="password" placeholder="New password" value={passwordDraft.newPassword} onChange={(event) => setPasswordDraft({ ...passwordDraft, newPassword: event.target.value })} minLength={6} required />
