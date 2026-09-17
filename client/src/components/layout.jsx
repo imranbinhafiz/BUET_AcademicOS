@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import '../pages/Home.css';
+import { apiUrl, assetUrl } from '../api';
 
 const BREADCRUMBS = {
   '/': 'SYSTEM // DASHBOARD',
@@ -19,6 +20,7 @@ export default function Layout() {
   const location = useLocation();
   const [user, setUser] = useState(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const refreshUnreadCount = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -28,7 +30,7 @@ export default function Layout() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/notifications/unread-count', {
+      const response = await fetch(apiUrl('/notifications/unread-count'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!response.ok) throw new Error('Could not load notification count.');
@@ -42,21 +44,38 @@ export default function Layout() {
   }, []);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    
-    if (storedUser && token) {
+    const syncCurrentUser = async () => {
+      const storedUser = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
+
+      if (!storedUser || !token) {
+        setUser(null);
+        setUnreadNotifications(0);
+        return;
+      }
+
       try {
-        setUser(JSON.parse(storedUser));
+        const cachedUser = JSON.parse(storedUser);
+        // Render instantly from login data, then replace an old avatar path
+        // with the current profile value stored in the database.
+        setUser(cachedUser);
+        if (cachedUser?.user_id) {
+          const response = await fetch(apiUrl(`/profile/${cachedUser.user_id}`));
+          if (response.ok) {
+            const latestProfile = await response.json();
+            const refreshedUser = { ...cachedUser, avatar_path: latestProfile.avatar_path || null, name: latestProfile.name || cachedUser.name };
+            localStorage.setItem('user', JSON.stringify(refreshedUser));
+            setUser(refreshedUser);
+          }
+        }
         refreshUnreadCount();
-      } catch (e) {
+      } catch {
         setUser(null);
         setUnreadNotifications(0);
       }
-    } else {
-      setUser(null);
-      setUnreadNotifications(0);
-    }
+    };
+
+    syncCurrentUser();
   }, [refreshUnreadCount]);
 
   useEffect(() => {
@@ -65,9 +84,23 @@ export default function Layout() {
   }, [refreshUnreadCount]);
 
   useEffect(() => {
-    const refreshUser = () => {
+    const refreshUser = async () => {
       const storedUser = localStorage.getItem('user');
-      if (storedUser) setUser(JSON.parse(storedUser));
+      if (!storedUser) return;
+      try {
+        const cachedUser = JSON.parse(storedUser);
+        setUser(cachedUser);
+        if (!cachedUser?.user_id) return;
+        const response = await fetch(apiUrl(`/profile/${cachedUser.user_id}`));
+        if (!response.ok) return;
+        const latestProfile = await response.json();
+        const refreshedUser = { ...cachedUser, avatar_path: latestProfile.avatar_path || null, name: latestProfile.name || cachedUser.name };
+        localStorage.setItem('user', JSON.stringify(refreshedUser));
+        setUser(refreshedUser);
+      } catch {
+        // The profile page has already shown any useful upload error. Keep the
+        // existing top-bar identity instead of clearing a valid login session.
+      }
     };
     window.addEventListener('profile-changed', refreshUser);
     return () => window.removeEventListener('profile-changed', refreshUser);
@@ -113,10 +146,13 @@ export default function Layout() {
 
   const pageTitle = BREADCRUMBS[location.pathname] || 'SYSTEM // DASHBOARD';
 
+  useEffect(() => { setMobileNavOpen(false); }, [location.pathname]);
+
   return (
     <div className="p5-layout">
       {/* SIDEBAR */}
-      <aside className="p5-sidebar">
+      {mobileNavOpen && <button className="p5-nav-backdrop" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
+      <aside className={`p5-sidebar ${mobileNavOpen ? 'open' : ''}`}>
         <div className="p5-sidebar-header">
           <span className="p5-brand-sub">BUET</span>
           <h1 className="p5-brand-title">ACADEMICOS</h1>
@@ -155,6 +191,7 @@ export default function Layout() {
       <div className="p5-main-wrapper">
         <header className="p5-topbar">
           <div className="p5-topbar-left">
+            <button className="p5-menu-btn" type="button" aria-label="Open navigation" aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(true)}><span /><span /></button>
             <span className="p5-page-indicator">{pageTitle}</span>
           </div>
 
@@ -174,14 +211,15 @@ export default function Layout() {
                   )}
                 </button>
 
-                <div 
+                <button
+                  type="button"
                   className="p5-profile-widget" 
-                  onClick={() => navigate('/profile')}
+                  onClick={() => navigate(user?.user_id ? `/profile/${user.user_id}` : '/login')}
                   title="View Profile"
                 >
                   <div className="p5-avatar-frame">
                     <img
-                      src={user.avatar_path ? `http://localhost:5000${user.avatar_path}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=b91522&color=fff&bold=true`}
+                      src={user.avatar_path ? assetUrl(user.avatar_path) : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=b91522&color=fff&bold=true`}
                       alt="User Avatar"
                       className="p5-avatar-img"
                     />
@@ -190,7 +228,7 @@ export default function Layout() {
                     <span className="p5-user-name">{user.name.toUpperCase()}</span>
                     <span className="p5-user-role">{user.role ? user.role.toUpperCase() : 'STUDENT'}</span>
                   </div>
-                </div>
+                </button>
               </>
             ) : (
               <Link to="/login" className="p5-topbar-login-btn">

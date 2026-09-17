@@ -1,0 +1,151 @@
+.theme-topbar {
+  height: 65px;
+  background-color: #080808;
+  border-bottom: 1px solid #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.topbar-breadcrumb {
+  font-family: monospace;
+  font-weight: 900;
+  font-size: 0.9rem;
+  letter-spacing: 1.5px;
+}
+
+.breadcrumb-red {
+  color: #d3122a;
+}
+
+.breadcrumb-title {
+  color: #d3122a;
+}
+
+.topbar-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.notif-square-btn {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  background: #111111;
+  border: 1px solid #222222;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.notif-red-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #d3122a;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 900;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-profile-container {
+  position: relative;
+}
+
+.user-badge-box {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #111111;
+  border: 1px solid #222222;
+  padding: 4px 10px 4px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.user-avatar-red {
+  width: 30px;
+  height: 30px;
+  background: #d3122a;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+}
+
+.user-text-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.user-name-label {
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+}
+
+.user-role-subtext {
+  color: #d3122a;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.profile-dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 48px;
+  background: #111111;
+  border: 1px solid #222222;
+  padding: 0.5rem;
+  border-radius: 3px;
+  z-index: 100;
+  min-width: 120px;
+}
+
+.logout-action-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px solid #d3122a;
+  color: #d3122a;
+  padding: 0.4rem;
+  font-weight: 800;
+  font-size: 0.75rem;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+
+.logout-action-btn:hover {
+  background: #d3122a;
+  color: #ffffff;
+}
+
+.topbar-login-red-btn {
+  background: #d3122a;
+  color: #ffffff;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-weight: 900;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  border-radius: 2px;
+}
