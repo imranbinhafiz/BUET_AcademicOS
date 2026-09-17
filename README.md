@@ -1,4 +1,4 @@
-"# BUET AcademicOS
+# BUET AcademicOS
 
 > A full-stack academic management platform built for BUET students — centralizing course resources, peer reviews, performance tracking, and community features in one place.
 
