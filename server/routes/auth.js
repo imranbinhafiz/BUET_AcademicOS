@@ -59,7 +59,7 @@ router.post('/register', async (req, res) => {
     const newUser = await db.query(
       `INSERT INTO Users (name, email, password, batch, dept_code) 
        VALUES ($1, $2, $3, $4, $5) 
-       RETURNING user_id, name, email, batch, role, dept_code`,
+      RETURNING user_id, name, email, batch, role, dept_code, avatar_path`,
       [name, email, hashedPassword, batch, dept_code]
     );
 
@@ -122,7 +122,8 @@ router.post('/login', async (req, res) => {
         email: user.email,
         batch: user.batch,
         role: user.role,
-        dept_code: user.dept_code
+        dept_code: user.dept_code,
+        avatar_path: user.avatar_path
       }
     });
   } catch (err) {

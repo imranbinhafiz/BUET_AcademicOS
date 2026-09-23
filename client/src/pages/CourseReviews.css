@@ -5,15 +5,18 @@
    ========================================================================== */
 :root {
   --cr-red: #b91522;
-  --cr-red-hover: #d91a29;;
-  --cr-black: #0f0f0f;
+  --cr-red-hover: #d91a29;
+  --cr-black: #0f1012;
   --cr-dark-gray: #1a1a1a;
   --cr-card-bg: #16161a;
   --cr-card-border: #333333;
   --cr-text-light: #e4e4e7;
   --cr-text-muted: #94949e;
+  
+  /* FONT VARIABLES */
   --font-cr: 'Rajdhani', sans-serif;
   --font-p5: 'Rajdhani', sans-serif;
+  --font-inter: 'Inter', sans-serif; /* NEW: Softer font for reading */
 }
 
 /* Base Layout Wrapper */
@@ -105,12 +108,7 @@
   color: var(--cr-red-hover);
 }
 
-/* Write Review Form
-   ------------------------------------------------------------------------
-   Key fix: no fixed/max height on the form itself beyond a scrollable cap,
-   and it's a normal block-level element in flow (not absolutely positioned),
-   so as the textarea grows, the form grows too, and the Post/Cancel buttons
-   at the bottom get pushed down and stay reachable by scrolling the page. */
+/* Write Review Form */
 .p5-upload-form {
   display: flex;
   flex-direction: column;
@@ -123,9 +121,7 @@
   margin-bottom: 2rem;
   box-sizing: border-box;
 
-  /* 1. Change this from 80vh to a large pixel value */
   max-height: 1500px;
-  /* 2. Keep this as visible so the dropdown works */
   overflow: visible;
 
   opacity: 1;
@@ -186,7 +182,6 @@
   border-color: var(--cr-red);
 }
 
-/* Number input spin-arrow styling (difficulty / usefulness scores) */
 .p5-input[type='number'] {
   appearance: textfield;
   -moz-appearance: textfield;
@@ -204,13 +199,9 @@
   opacity: 1;
 }
 
-/* Auto-growing textarea used for the review comment.
-   resize is disabled and overflow hidden because the JS in the
-   component sets `height` directly from `scrollHeight` on every
-   keystroke — the box itself grows taller as you type, pushing
-   the Post/Cancel buttons below it further down the page. */
+/* Review text area - updated to Inter font */
 textarea.p5-input {
-  font-family: var(--font-p5);
+  font-family: var(--font-inter);
   font-weight: 400;
   resize: none;
   overflow: hidden;
@@ -488,8 +479,10 @@ textarea.p5-input {
   font-size: 0.95rem;
 }
 
+/* Flagged Topic text - updated to Inter font */
 .cr-flagged-topics-list li span {
   overflow-wrap: anywhere;
+  font-family: var(--font-inter);
 }
 
 .cr-flagged-topics-list strong {
@@ -702,8 +695,9 @@ textarea.p5-input {
   text-align: center;
 }
 
+/* Review text body - updated to Inter font */
 .cr-anilist-body {
-  font-family: var(--font-p5);
+  font-family: var(--font-inter);
   font-weight: 400;
   font-size: 0.95rem;
   line-height: 1.5;
@@ -812,7 +806,7 @@ textarea.p5-input {
   display: flex;
   gap: 0.5rem;
   width: 100%;
-  align-items: stretch; /* Forces all elements to stretch to the exact same height */
+  align-items: stretch;
 }
 
 .cr-report-box input {
@@ -825,12 +819,8 @@ textarea.p5-input {
   margin: 0;
   padding: 0 1.25rem;
   box-sizing: border-box;
-
-  /* These two lines are the magic bullet that stops the squishing */
   height: auto !important;
   max-height: none !important;
-
-  /* Keeps the text perfectly centered inside the button */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -861,7 +851,7 @@ textarea.p5-input {
   font-style: italic;
 }
 
-/* Custom Scrollbar Styling (Write Review form + reviews modal list) */
+/* Custom Scrollbar Styling */
 .p5-upload-form,
 .cr-anilist-reviews-list,
 .p5-parent-suggestions {
@@ -895,26 +885,20 @@ textarea.p5-input {
   background-color: var(--cr-red-hover);
 }
 
-
-/* ==========================================================================
-   Typeahead / Dropdown Suggestions
-   ========================================================================== */
-
+/* Typeahead / Dropdown Suggestions */
 .p5-parent-search-wrapper {
   position: relative;
 }
 
-/* This keeps the X button locked inside the input field */
 .p5-parent-input-row {
   position: relative;
 }
 
-/* This styles the actual dropdown list so it becomes visible */
 .p5-parent-suggestions {
   list-style: none;
   margin: 0.4rem 0 0 0;
   padding: 0;
-  background-color: #111; /* Matches your input backgrounds */
+  background-color: #111;
   border: 1px solid var(--cr-card-border);
   border-radius: 4px;
   max-height: 220px;
@@ -923,7 +907,7 @@ textarea.p5-input {
   top: 100%;
   left: 0;
   width: 100%;
-  z-index: 100; /* Forces it to hover OVER the other form fields */
+  z-index: 100;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
   box-sizing: border-box;
 }
@@ -950,7 +934,7 @@ textarea.p5-input {
 }
 
 .p5-parent-suggestion-item:hover {
-  background-color: #1a1a1a; /* Highlight on hover */
+  background-color: #1a1a1a;
 }
 
 .p5-parent-suggestion-title {

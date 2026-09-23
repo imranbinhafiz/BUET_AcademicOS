@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
-import '../pages/Home.css';
+import './Layout.css';  
 
 const BREADCRUMBS = {
   '/': 'SYSTEM // DASHBOARD',
@@ -116,37 +116,37 @@ export default function Layout() {
   const pageTitle = BREADCRUMBS[location.pathname] || 'SYSTEM // DASHBOARD';
 
   return (
-    <div className="p5-layout">
+    <div className="lay-layout">
       {/* SIDEBAR */}
-      <aside className="p5-sidebar">
-        <div className="p5-sidebar-header">
-          <span className="p5-brand-sub">BUET</span>
-          <h1 className="p5-brand-title">ACADEMICOS</h1>
+      <aside className="lay-sidebar">
+        <div className="lay-sidebar-header">
+          <span className="lay-brand-sub">BUET</span>
+          <h1 className="lay-brand-title">ACADEMICOS</h1>
         </div>
 
-        <nav className="p5-nav">
+        <nav className="lay-nav">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.label}
                 to={item.path}
-                className={`p5-nav-item ${isActive ? 'active' : ''}`}
+                className={`lay-nav-item ${isActive ? 'active' : ''}`}
               >
-                <span className="p5-nav-icon">{item.icon}</span>
-                <span className="p5-nav-text">{item.label}</span>
+                <span className="lay-nav-icon">{item.icon}</span>
+                <span className="lay-nav-text">{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
         {/* BOTTOM LEFT FOOTER WITH LOGOUT */}
-        <div className="p5-sidebar-footer">
-          <span className="p5-dept-tag">
+        <div className="lay-sidebar-footer">
+          <span className="lay-dept-tag">
             User // {user ? user.role.toUpperCase() || 'N/A' : 'GUEST'}
           </span>
           {user && (
-            <button className="p5-logout-btn" onClick={handleLogout}>
+            <button className="lay-logout-btn" onClick={handleLogout}>
               LOGOUT
             </button>
           )}
@@ -154,56 +154,56 @@ export default function Layout() {
       </aside>
 
       {/* MAIN WRAPPER */}
-      <div className="p5-main-wrapper">
-        <header className="p5-topbar">
-          <div className="p5-topbar-left">
-            <span className="p5-page-indicator">{pageTitle}</span>
+      <div className="lay-main-wrapper">
+        <header className="lay-topbar">
+          <div className="lay-topbar-left">
+            <span className="lay-page-indicator">{pageTitle}</span>
           </div>
 
-          <div className="p5-topbar-right">
+          <div className="lay-topbar-right">
             {user ? (
               <>
                 <button
                   type="button"
-                  className="p5-notification-box"
+                  className="lay-notification-box"
                   title="Notifications"
                   aria-label={`Notifications${unreadNotifications ? `, ${unreadNotifications} unread` : ''}`}
                   onClick={() => navigate('/notifications')}
                 >
-                  <span className="p5-notification-icon">🔔</span>
+                  <span className="lay-notification-icon">🔔</span>
                   {unreadNotifications > 0 && (
-                    <span className="p5-notification-badge">{unreadNotifications}</span>
+                    <span className="lay-notification-badge">{unreadNotifications}</span>
                   )}
                 </button>
 
                 <div 
-                  className="p5-profile-widget" 
+                  className="lay-profile-widget" 
                   onClick={() => navigate(user?.user_id ? `/profile/${user.user_id}` : '/login')}
                   title="View Profile"
                 >
-                  <div className="p5-avatar-frame">
+                  <div className="lay-avatar-frame">
                     <img
                       src={user.avatar_path ? `${SERVER_ORIGIN}${user.avatar_path}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=b91522&color=fff&bold=true`}
                       alt="User Avatar"
-                      className="p5-avatar-img"
+                      className="lay-avatar-img"
                     />
                   </div>
-                  <div className="p5-user-info">
-                    <span className="p5-user-name">{user.name.toUpperCase()}</span>
-                    <span className="p5-user-role">{user.role ? user.role.toUpperCase() : 'STUDENT'}</span>
+                  <div className="lay-user-info">
+                    <span className="lay-user-name">{user.name.toUpperCase()}</span>
+                    <span className="lay-user-role">{user.role ? user.role.toUpperCase() : 'STUDENT'}</span>
                   </div>
                 </div>
               </>
             ) : (
-              <Link to="/login" className="p5-topbar-login-btn">
+              <Link to="/login" className="lay-topbar-login-btn">
                 LOG IN
               </Link>
             )}
           </div>
         </header>
 
-        <main className="p5-content">
-          <div key={location.pathname} className="p5-route-transition">
+        <main className="lay-content">
+          <div key={location.pathname} className="lay-route-transition">
             <Outlet context={{ user, unreadNotifications, refreshUnreadCount }} />
           </div>
         </main>
