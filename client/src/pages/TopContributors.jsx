@@ -48,8 +48,13 @@ export default function TopContributors() {
 
       {loading && (
         <div className="p5-leaderboard-table data-skeleton-leaderboard" aria-label="Loading contributors">
-          {Array.from({ length: 6 }, (_, index) => (
-            <div className="p5-leader-row data-skeleton-row" key={index}>
+          {Array.from({ length: 8 }, (_, index) => (
+            <div 
+              className="p5-leader-row data-skeleton-row" 
+              key={index}
+              style={{ '--stagger': index }}
+            >
+              <span className="data-skeleton-line data-skeleton-rank" /> {/* Added rank placeholder */}
               <span className="data-skeleton-circle" />
               <span className="data-skeleton-line name" />
               <span className="data-skeleton-line stat" />
@@ -68,6 +73,7 @@ export default function TopContributors() {
               type="button"
               className="p5-leader-row"
               onClick={() => goToProfile(item.user_id)}
+              style={{ '--stagger': index }}
             >
               <span className="p5-rank">
                 #{String(index + 1).padStart(2, '0')}
@@ -75,7 +81,14 @@ export default function TopContributors() {
 
               <span className="p5-leader-avatar">
                 {item.avatar_path ? (
-                  <img src={`${SERVER_ORIGIN}${item.avatar_path}`} alt={item.name} />
+                  <img 
+                    src={`${SERVER_ORIGIN}${item.avatar_path}`} 
+                    alt={item.name} 
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=b91522&color=fff&bold=true`;
+                    }}
+                  />
                 ) : (
                   <span className="p5-leader-avatar-fallback">
                     {item.name ? item.name.charAt(0).toUpperCase() : '?'}

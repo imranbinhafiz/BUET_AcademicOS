@@ -7,7 +7,8 @@ const {
   getBatchProgressHistory,
   advanceBatchProgress,
   listModerationQueue,
-  resolveReport
+  resolveReport,
+  banUserFromReport
 } = require('../models/admin');
 
 const router = express.Router();
@@ -174,6 +175,31 @@ router.patch('/reports/:reportId', async (req, res) => {
     return res.json({ report });
   } catch (err) {
     return databaseError(res, err, 'Could not resolve the report.');
+  }
+});
+
+// POST /api/admin/reports/:reportId/ban-user
+router.post('/reports/:reportId/ban-user', async (req, res) => {
+  const idValidation = Joi.number().integer().positive().validate(req.params.reportId);
+  if (idValidation.error) return validationError(res, idValidation.error);
+
+  try {
+    await banUserFromReport({
+      reportId: idValidation.value,
+      actorUserId: req.activeUser.user_id
+    });
+    return res.json({ message: 'User banned and report resolved.' });
+  } catch (err) {
+    if (err.message === 'REPORT_NOT_FOUND') {
+      return res.status(404).json({ code: 'REPORT_NOT_FOUND', message: 'Report not found.' });
+    }
+    if (err.message === 'REPORT_OWNER_NOT_FOUND') {
+      return res.status(409).json({ code: 'REPORT_OWNER_NOT_FOUND', message: 'The reported content owner could not be found.' });
+    }
+    if (err.message === 'USER_CANNOT_BE_BANNED') {
+      return res.status(409).json({ code: 'USER_CANNOT_BE_BANNED', message: 'This user cannot be banned.' });
+    }
+    return databaseError(res, err, 'Could not ban the reported user.');
   }
 });
 

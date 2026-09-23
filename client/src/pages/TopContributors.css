@@ -1,3 +1,7 @@
+/* ==========================================================================
+   TopContributors.css
+   ========================================================================== */
+
 .p5-leaderboard-table {
   display: flex;
   flex-direction: column;
@@ -16,11 +20,24 @@
   cursor: pointer;
   text-align: left;
   transition: border-color 0.15s ease, transform 0.15s ease;
+  
+  /* NEW: Staggered Fade-Up Animation */
+  opacity: 0;
+  transform: translateY(15px);
+  animation: leader-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--stagger, 0) * 0.05s);
+}
+
+@keyframes leader-fade-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .p5-leader-row:hover {
   border-color: var(--p5-red);
-  transform: translateX(2px);
+  transform: translateX(4px); /* Maintained your horizontal shift */
 }
 
 .p5-rank {
@@ -80,6 +97,7 @@
   border: 1px solid var(--p5-border);
   flex-shrink: 0;
   white-space: nowrap;
+  border-radius: 4px;
 }
 
 .p5-empty-state {
@@ -93,4 +111,67 @@
   font-size: 0.85rem;
   font-weight: 700;
   padding: 0.5rem 0;
+}
+
+/* ==========================================================================
+   SKELETON LOADERS (Adapted for Flexbox)
+   ========================================================================== */
+@keyframes leader-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.data-skeleton-row {
+  cursor: default;
+  pointer-events: none;
+}
+
+.data-skeleton-row:hover {
+  transform: none;
+  border-color: var(--p5-border);
+}
+
+.data-skeleton-circle,
+.data-skeleton-line {
+  background: linear-gradient(90deg, #1c1c21 25%, #2a2a32 50%, #1c1c21 75%);
+  background-size: 200% 100%;
+  animation: leader-shimmer 1.5s infinite linear;
+  border-radius: 4px;
+}
+
+/* Rank Placeholder */
+.data-skeleton-rank {
+  width: 50px;
+  height: 1.3rem;
+  flex-shrink: 0;
+}
+
+/* Avatar Placeholder */
+.data-skeleton-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Name Placeholder */
+.data-skeleton-line.name {
+  height: 1.2rem;
+  max-width: 250px;
+  flex-grow: 1;
+}
+
+/* Uploads Placeholder */
+.data-skeleton-line.stat {
+  height: 0.9rem;
+  width: 80px;
+  margin-right: 2rem;
+  flex-shrink: 0;
+}
+
+/* Points Pill Placeholder */
+.data-skeleton-line.points {
+  height: 2rem;
+  width: 80px;
+  flex-shrink: 0;
 }

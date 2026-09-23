@@ -77,6 +77,20 @@ export default function AdminModeration() {
     } catch (err) { setError(err.message); } finally { setWorkingKey(''); }
   }
 
+  async function banReportedUser(reportId) {
+    const key = `report-ban-${reportId}`;
+    setWorkingKey(key); setError(''); setNotice('');
+    try {
+      await getJson(await fetch(`${API_BASE}/reports/${reportId}/ban-user`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      }));
+      setNotice('User banned. Existing resources remain visible, but the user cannot log in or create new content.');
+      setActiveReportId(null);
+      await loadQueue();
+    } catch (err) { setError(err.message); } finally { setWorkingKey(''); }
+  }
+
   if (!user || user.role?.toLowerCase() !== 'admin') {
     return <section className="moderation-page"><div className="moderation-access-card"><p>RESTRICTED AREA</p><h2>MODERATION QUEUE</h2><span>Only active administrators can review content reports.</span></div></section>;
   }
@@ -150,6 +164,15 @@ export default function AdminModeration() {
                     <div className="moderation-actions" style={{ justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                       <button onClick={() => { setActiveReportId(null); setAdminMessage(''); }}>CANCEL</button>
                       <button disabled={workingKey === `report-${report.report_id}`} onClick={() => resolveReport(report.report_id, 'dismissed')}>DISMISS REPORT</button>
+                      {report.owner_user_id && !report.owner_deleted_at && (
+                        <button
+                          className="danger"
+                          disabled={workingKey === `report-ban-${report.report_id}`}
+                          onClick={() => banReportedUser(report.report_id)}
+                        >
+                          {workingKey === `report-ban-${report.report_id}` ? 'BANNING...' : `BAN ${report.owner_name?.toUpperCase() || 'USER'}`}
+                        </button>
+                      )}
                       <button 
                         style={{ backgroundColor: 'var(--cr-red)', color: '#fff', borderColor: 'var(--cr-red)' }}
                         disabled={workingKey === `report-delete-${report.report_id}`} 

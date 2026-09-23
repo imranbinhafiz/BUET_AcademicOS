@@ -93,7 +93,7 @@ router.post('/login', async (req, res) => {
     }
 
     const { email, password } = value;
-    const result = await db.query('SELECT * FROM Users WHERE email = $1', [email]);
+    const result = await db.query('SELECT * FROM Users WHERE email = $1 AND deleted_at IS NULL', [email]);
     const user = result.rows[0];
 
     // If no user found, halt early

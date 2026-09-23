@@ -16,6 +16,7 @@
 .moderation-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
 .moderation-actions button { background: transparent; border: 1px solid var(--p5-border); color: var(--p5-text-muted); cursor: pointer; font-family: var(--font-p5); font-size: .72rem; font-weight: 800; letter-spacing: .06em; padding: .55rem .65rem; }
 .moderation-actions button.primary { background: var(--p5-red); border-color: var(--p5-red); color: #fff; }
+.moderation-actions button.danger { background: #7f1d1d; border-color: #b91c1c; color: #fff; }
 .moderation-actions button:disabled { cursor: not-allowed; opacity: .55; }
 .moderation-empty { color: var(--p5-text-muted); padding: 1rem 1.1rem; }
 .moderation-message.error { border-color: #b85450; color: #ffaaa4; }

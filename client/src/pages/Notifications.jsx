@@ -37,8 +37,6 @@ export default function Notifications() {
   const navigate = useNavigate();
   const { user, refreshUnreadCount } = useOutletContext();
   const token = localStorage.getItem('token');
-  // Keep this object stable. Otherwise it changes on every render, which
-  // changes loadNotifications and continuously restarts the loading effect.
   const headers = useMemo(() => (token ? { Authorization: `Bearer ${token}` } : {}), [token]);
   const [notifications, setNotifications] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
@@ -109,7 +107,7 @@ export default function Notifications() {
     setError('');
     try {
       await getJson(await fetch(`${API_BASE}/read-all`, { method: 'DELETE', headers }));
-      setNotifications([]); // Instantly clears the list in the UI
+      setNotifications([]);
       await refreshUnreadCount();
     } catch (err) {
       setError(err.message);
@@ -121,8 +119,6 @@ export default function Notifications() {
   if (!user) {
     return <section className="notifications-page"><div className="notifications-login-card"><h2>NOTIFICATIONS</h2><p>Log in to see your personal notifications.</p></div></section>;
   }
-
-  const unreadCount = notifications.filter((notification) => !notification.is_read).length;
 
   return (
     <section className="notifications-page">
@@ -138,17 +134,35 @@ export default function Notifications() {
       </div>
 
       {error && <div className="notifications-message error">{error}</div>}
-      {loading && <p className="notifications-loading">Loading your notifications...</p>}
+
+      {/* SKELETON LOADER */}
+      {loading && (
+        <div className="notifications-list data-skeleton-list" aria-label="Loading notifications">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div className="notification-item data-skeleton-row" key={index} style={{ '--stagger': index }}>
+              <span className="data-skeleton-status" />
+              <div className="notification-content">
+                <span className="data-skeleton-line short" />
+                <span className="data-skeleton-line title" />
+                <span className="data-skeleton-line short" style={{ width: '40%' }} />
+              </div>
+              <span className="data-skeleton-line short" style={{ width: '80px' }} />
+            </div>
+          ))}
+        </div>
+      )}
+
       {!loading && notifications.length === 0 && <div className="notifications-empty">You have no notifications yet.</div>}
 
       {!loading && notifications.length > 0 && (
         <div className="notifications-list">
-          {notifications.map((notification) => (
+          {notifications.map((notification, index) => (
             <button
               type="button"
-              className={notification.is_read ? 'notification-item read' : 'notification-item unread'}
+              className={`notification-item ${notification.is_read ? 'read' : 'unread'} notification-animate-in`}
               key={notification.notification_id}
               onClick={() => openNotification(notification)}
+              style={{ '--stagger': index }}
             >
               <span className="notification-status" aria-label={notification.is_read ? 'Read' : 'Unread'} />
               <span className="notification-content">

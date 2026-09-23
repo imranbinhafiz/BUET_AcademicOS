@@ -166,12 +166,16 @@ async function listModerationQueue() {
     `SELECT
        r.report_id, r.target_type, r.target_id, r.reason, r.created_at,
        reporter.name AS reporter_name,
+       owner.user_id AS owner_user_id,
+       owner.name AS owner_name,
+       owner.deleted_at AS owner_deleted_at,
        COALESCE(cr.comment, resource.title, '[Removed content]') AS target_preview,
        COALESCE(cr.course_code, resource.course_code) AS course_code
      FROM reports r
      JOIN users reporter ON reporter.user_id = r.reporter_user_id
      LEFT JOIN coursereviews cr ON r.target_type = 'coursereview' AND cr.review_id = r.target_id
      LEFT JOIN resources resource ON r.target_type = 'resource' AND resource.res_id = r.target_id
+     LEFT JOIN users owner ON owner.user_id = COALESCE(cr.user_id, resource.user_id)
      WHERE r.status = 'pending'
        AND (cr.review_id IS NOT NULL OR resource.res_id IS NOT NULL)
      ORDER BY r.report_id DESC
@@ -197,6 +201,62 @@ async function resolveReport({ reportId, status, resolutionNote, actorUserId }) 
     [reportId, status, resolutionNote || null, actorUserId]
   );
   return result.rows[0] || null;
+}
+
+async function banUserFromReport({ reportId, actorUserId }) {
+  const client = await db.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const reportResult = await client.query(
+      `SELECT r.target_type, r.target_id,
+              CASE
+                WHEN r.target_type = 'coursereview' THEN cr.user_id
+                WHEN r.target_type = 'resource' THEN resource.user_id
+              END AS owner_id
+       FROM reports r
+       LEFT JOIN coursereviews cr
+         ON r.target_type = 'coursereview' AND cr.review_id = r.target_id
+       LEFT JOIN resources resource
+         ON r.target_type = 'resource' AND resource.res_id = r.target_id
+       WHERE r.report_id = $1
+       FOR UPDATE OF r` ,
+      [reportId]
+    );
+
+    const report = reportResult.rows[0];
+    if (!report) throw new Error('REPORT_NOT_FOUND');
+    if (!report.owner_id) throw new Error('REPORT_OWNER_NOT_FOUND');
+
+    const userResult = await client.query(
+      `UPDATE users
+       SET deleted_at = COALESCE(deleted_at, CURRENT_TIMESTAMP)
+       WHERE user_id = $1 AND role <> 'admin'
+       RETURNING user_id, name`,
+      [report.owner_id]
+    );
+
+    if (!userResult.rows[0]) throw new Error('USER_CANNOT_BE_BANNED');
+
+    await client.query(
+      `UPDATE reports
+       SET status = 'reviewed',
+           resolution_note = 'User banned by admin',
+           reviewed_by_user_id = $1,
+           reviewed_at = CURRENT_TIMESTAMP
+       WHERE report_id = $2 AND status = 'pending'`,
+      [actorUserId, reportId]
+    );
+
+    await client.query('COMMIT');
+    return userResult.rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 async function deleteReportedContent({ reportId, customMessage, actorUserId }) {
@@ -283,5 +343,6 @@ module.exports = {
   advanceBatchProgress,
   listModerationQueue,
   resolveReport,
+  banUserFromReport,
   deleteReportedContent // <-- Add the export here
 };

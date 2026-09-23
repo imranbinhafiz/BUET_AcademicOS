@@ -263,16 +263,64 @@ export default function UserProfile() {
     }
   };
 
-  if (loadingProfile) return <div className="prof-page"><p className="prof-empty-state">Loading profile...</p></div>;
+  // -------------------------------------------------------------------------
+  // SKELETON LOADER (Animated Master Profile View)
+  // -------------------------------------------------------------------------
+  if (loadingProfile) {
+    return (
+      <div className="prof-page prof-page-upgraded">
+        <header className="prof-page-topline prof-animate-in" style={{ '--stagger': 0 }}>
+          <div className="prof-skeleton-line short" style={{ width: '80px', margin: 0 }} />
+          <div className="prof-skeleton-line short" style={{ width: '150px', margin: 0 }} />
+        </header>
+
+        <div className="prof-layout">
+          <aside className="prof-sidebar">
+            <div className="prof-skeleton-avatar prof-animate-in" style={{ '--stagger': 1 }} />
+            <div className="prof-identity prof-animate-in" style={{ '--stagger': 1, marginTop: '1.5rem' }}>
+              <div className="prof-skeleton-line short" style={{ height: '0.75rem', marginBottom: '0.8rem' }} />
+              <div className="prof-skeleton-line title" style={{ height: '2rem' }} />
+              <div className="prof-skeleton-line medium" style={{ height: '1rem' }} />
+            </div>
+          </aside>
+          
+          <main className="prof-main">
+            <section className="prof-hero-copy prof-animate-in" style={{ '--stagger': 2 }}>
+              <div className="prof-skeleton-line short" style={{ height: '0.75rem', marginBottom: '0.8rem' }} />
+              <div className="prof-skeleton-line title" style={{ height: '2rem', width: '80%' }} />
+              <div className="prof-skeleton-line medium" style={{ height: '1rem' }} />
+            </section>
+            
+            <section className="prof-stat-grid prof-animate-in" style={{ '--stagger': 3 }}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="prof-stat-card">
+                  <div className="prof-skeleton-line short" style={{ height: '1rem', marginBottom: '0.5rem' }} />
+                  <div className="prof-skeleton-line title" style={{ height: '2.5rem', width: '50%', margin: 0 }} />
+                </div>
+              ))}
+            </section>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   if (error) return <div className="prof-page"><p className="prof-error">{error}</p></div>;
   if (!profile) return <div className="prof-page"><p className="prof-empty-state">Profile not found.</p></div>;
 
   const resourceVotes = uploads.reduce((total, upload) => total + Number(upload.vote_tally || 0), 0);
   const reviewVotes = reviews.reduce((total, review) => total + Number(review.vote_tally || 0), 0);
 
+  // Stagger index logic so the layout animations flow smoothly top-to-bottom
+  const staggerBase = 4;
+  const bioStagger = staggerBase;
+  const accountStagger = isOwnProfile ? staggerBase + 1 : staggerBase;
+  const uploadsStagger = isOwnProfile ? staggerBase + 2 : staggerBase + 1;
+  const reviewsStagger = isOwnProfile ? staggerBase + 3 : staggerBase + 2;
+
   return (
     <div className="prof-page prof-page-upgraded">
-      <header className="prof-page-topline">
+      <header className="prof-page-topline prof-animate-in" style={{ '--stagger': 0 }}>
         <button className="prof-back-btn" onClick={() => navigate(-1)}>
           ← BACK
         </button>
@@ -283,7 +331,7 @@ export default function UserProfile() {
         
         {/* LEFT SIDEBAR: Avatar & Identity */}
         <aside className="prof-sidebar">
-          <div className="prof-avatar-frame">
+          <div className="prof-avatar-frame prof-animate-in" style={{ '--stagger': 1 }}>
             <div className={`prof-avatar ${isOwnProfile ? 'prof-avatar-editable' : ''}`} onClick={() => isOwnProfile && avatarInputRef.current?.click()} role={isOwnProfile ? 'button' : undefined} tabIndex={isOwnProfile ? 0 : undefined} onKeyDown={(event) => { if (isOwnProfile && (event.key === 'Enter' || event.key === ' ')) avatarInputRef.current?.click(); }}>
             {getAvatarUrl(profile.avatar_path) ? (
               <img src={getAvatarUrl(profile.avatar_path)} alt={profile.name} />
@@ -297,13 +345,13 @@ export default function UserProfile() {
             </div>
             {isOwnProfile && <span className="prof-avatar-hint">Click to replace · JPG, PNG, WebP or GIF · max 2 MB</span>}
           </div>
-          {avatarError && <p className="prof-inline-error">{avatarError}</p>}
-          <div className="prof-identity">
+          {avatarError && <p className="prof-inline-error prof-animate-in" style={{ '--stagger': 1 }}>{avatarError}</p>}
+          <div className="prof-identity prof-animate-in" style={{ '--stagger': 1 }}>
             <p className="prof-eyebrow">{isOwnProfile ? 'YOUR PROFILE' : 'ACADEMICOS MEMBER'}</p>
             <h1 className="prof-name">{profile.name}</h1>
             <p className="prof-meta"><span aria-hidden="true">✉</span> {profile.email || 'Email not public'}</p>
           </div>
-          <div className="prof-profile-note">
+          <div className="prof-profile-note prof-animate-in" style={{ '--stagger': 1 }}>
             <span className="prof-status-dot" aria-hidden="true" />
             <span>{isOwnProfile ? 'Your profile is visible to the AcademicOS community.' : 'Community contributor'}</span>
           </div>
@@ -311,19 +359,19 @@ export default function UserProfile() {
 
         {/* RIGHT PANEL: Bio & Contributions */}
         <main className="prof-main">
-          <section className="prof-hero-copy">
+          <section className="prof-hero-copy prof-animate-in" style={{ '--stagger': 2 }}>
             <p className="prof-eyebrow">{isOwnProfile ? 'PERSONAL DASHBOARD' : 'CONTRIBUTION SNAPSHOT'}</p>
             <h2>{isOwnProfile ? 'Keep your academic identity up to date.' : `${profile.name}'s academic footprint.`}</h2>
             <p>{isOwnProfile ? 'Your uploads and reviews make the library more useful for every batch.' : 'Browse this member’s shared resources and course experience below.'}</p>
           </section>
 
-          <section className="prof-stat-grid" aria-label="Contribution summary">
+          <section className="prof-stat-grid prof-animate-in" style={{ '--stagger': 3 }} aria-label="Contribution summary">
             <div className="prof-stat-card"><span>Resources</span><strong>{uploads.length}</strong><small>shared materials</small></div>
             <div className="prof-stat-card"><span>Reviews</span><strong>{reviews.length}</strong><small>course insights</small></div>
             <div className="prof-stat-card"><span>Helpful votes</span><strong>{resourceVotes + reviewVotes}</strong><small>across contributions</small></div>
           </section>
           
-          <div className="prof-bio-section">
+          <div className="prof-bio-section prof-animate-in" style={{ '--stagger': bioStagger }}>
             <div className="prof-section-heading">
               <h3>About</h3>
               {isOwnProfile && !isEditingBio && <button className="prof-edit-btn" onClick={() => setIsEditingBio(true)}>Edit bio</button>}
@@ -346,7 +394,7 @@ export default function UserProfile() {
           </div>
 
           {isOwnProfile && (
-            <div className="prof-account-section">
+            <div className="prof-account-section prof-animate-in" style={{ '--stagger': accountStagger }}>
               <div className="prof-section-heading">
                 <div><p className="prof-eyebrow">ACCOUNT SECURITY</p><h3>Keep your account secure</h3></div>
                 <button className="prof-edit-btn" onClick={() => { setShowPasswordForm((open) => !open); setPasswordError(''); setPasswordMessage(''); }}>
@@ -370,7 +418,7 @@ export default function UserProfile() {
             {/* =========================================
                 UPLOADED RESOURCES WITH SEARCH/SORT
                 ========================================= */}
-            <section className={`prof-section ${expandedResources ? 'is-expanded' : ''}`}>
+            <section className={`prof-section prof-animate-in ${expandedResources ? 'is-expanded' : ''}`} style={{ '--stagger': uploadsStagger }}>
               <button className="prof-section-toggle" onClick={() => setExpandedResources((expanded) => !expanded)} aria-expanded={expandedResources}>
                 <h3>
                   UPLOADS <span className="prof-count-badge">{uploads.length}</span>
@@ -406,7 +454,18 @@ export default function UserProfile() {
                 </div>
 
               {loadingRes && uploads.length === 0 ? (
-                <p className="prof-empty-state">Filtering...</p>
+                <div className="prof-skeleton-list" aria-label="Loading resources">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div className="prof-list-item" key={index}>
+                      <div className="prof-list-header">
+                        <span className="prof-skeleton-line short" style={{ width: '100px', margin: 0 }} />
+                        <span className="prof-skeleton-line short" style={{ width: '80px', margin: 0 }} />
+                      </div>
+                      <div className="prof-skeleton-line medium" style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }} />
+                      <div className="prof-skeleton-line short" style={{ width: '120px' }} />
+                    </div>
+                  ))}
+                </div>
               ) : uploads.length === 0 ? (
                 <p className="prof-empty-state">No resources match your search.</p>
               ) : (
@@ -442,7 +501,7 @@ export default function UserProfile() {
             {/* =========================================
                 COURSE REVIEWS WITH SEARCH/SORT
                 ========================================= */}
-            <section className={`prof-section ${expandedReviews ? 'is-expanded' : ''}`}>
+            <section className={`prof-section prof-animate-in ${expandedReviews ? 'is-expanded' : ''}`} style={{ '--stagger': reviewsStagger }}>
               <button className="prof-section-toggle" onClick={() => setExpandedReviews((expanded) => !expanded)} aria-expanded={expandedReviews}>
                 <h3>
                   REVIEWS <span className="prof-count-badge">{reviews.length}</span>
@@ -478,7 +537,18 @@ export default function UserProfile() {
                 </div>
 
               {loadingRev && reviews.length === 0 ? (
-                <p className="prof-empty-state">Filtering...</p>
+                <div className="prof-skeleton-list" aria-label="Loading reviews">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div className="prof-list-item" key={index}>
+                      <div className="prof-list-header">
+                        <span className="prof-skeleton-line short" style={{ width: '80px', margin: 0 }} />
+                        <span className="prof-skeleton-line short" style={{ width: '100px', margin: 0 }} />
+                      </div>
+                      <div className="prof-skeleton-line medium" style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }} />
+                      <div className="prof-skeleton-line short" style={{ width: '120px' }} />
+                    </div>
+                  ))}
+                </div>
               ) : reviews.length === 0 ? (
                 <p className="prof-empty-state">No reviews match your search.</p>
               ) : (

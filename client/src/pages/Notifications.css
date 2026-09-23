@@ -48,6 +48,8 @@
   font-weight: 800;
   letter-spacing: 0.06em;
   padding: 0.7rem 0.9rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
 
 .notifications-mark-all:hover:not(:disabled),
@@ -69,6 +71,7 @@
   border: 1px solid var(--p5-border);
   margin: 1rem 0;
   padding: 1rem 1.15rem;
+  border-radius: 6px;
 }
 
 .notifications-message.error {
@@ -93,6 +96,8 @@
 
 .notifications-list {
   border: 1px solid var(--p5-border);
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .notification-item {
@@ -109,6 +114,7 @@
   padding: 1rem 1.15rem;
   text-align: left;
   width: 100%;
+  transition: background-color 0.2s ease;
 }
 
 .notification-item:last-child {
@@ -169,6 +175,65 @@
 .notifications-load-more {
   display: block;
   margin: 1rem auto 0;
+}
+
+/* ==========================================================================
+   ANIMATIONS & SKELETON LOADERS
+   ========================================================================== */
+@keyframes notification-fade-up {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.notification-animate-in {
+  opacity: 0;
+  animation: notification-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--stagger, 0) * 0.05s);
+}
+
+@keyframes notification-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.data-skeleton-row {
+  cursor: default;
+  pointer-events: none;
+  opacity: 0;
+  animation: notification-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--stagger, 0) * 0.05s);
+}
+
+.data-skeleton-row:hover {
+  background: transparent;
+}
+
+.data-skeleton-status,
+.data-skeleton-line {
+  background: linear-gradient(90deg, #1c1c21 25%, #2a2a32 50%, #1c1c21 75%);
+  background-size: 200% 100%;
+  animation: notification-shimmer 1.5s infinite linear;
+  border-radius: 4px;
+}
+
+.data-skeleton-status {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+}
+
+.data-skeleton-line {
+  height: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.data-skeleton-line.title {
+  height: 1.1rem;
+  width: 75%;
+}
+
+.data-skeleton-line.short {
+  width: 30%;
 }
 
 @media (max-width: 700px) {
