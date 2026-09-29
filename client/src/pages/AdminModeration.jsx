@@ -92,31 +92,31 @@ export default function AdminModeration() {
   }
 
   if (!user || user.role?.toLowerCase() !== 'admin') {
-    return <section className="moderation-page"><div className="moderation-access-card"><p>RESTRICTED AREA</p><h2>MODERATION QUEUE</h2><span>Only active administrators can review content reports.</span></div></section>;
+    return <section className="moderation-page"><div className="moderation-access-card p5-stagger-enter" style={{ '--stagger': 0 }}><p>RESTRICTED AREA</p><h2>MODERATION QUEUE</h2><span>Only active administrators can review content reports.</span></div></section>;
   }
 
   return (
     <section className="moderation-page">
-      <div className="p5-page-header moderation-header"><div><p>CONTENT SAFETY WORKFLOW</p><h2>MODERATION QUEUE</h2><span>Resolve content reports. PostgreSQL sends the resulting personal notification.</span></div></div>
+      <div className="p5-page-header moderation-header p5-stagger-enter" style={{ '--stagger': 0 }}><div><p>CONTENT SAFETY WORKFLOW</p><h2>MODERATION QUEUE</h2><span>Resolve content reports. PostgreSQL sends the resulting personal notification.</span></div></div>
       
-      {error && <div className="moderation-message error">{error}</div>}
-      {notice && <div className="moderation-message success">{notice}</div>}
-      {loading && <p className="moderation-loading">Loading pending moderation work...</p>}
+      {error && <div className="moderation-message error p5-stagger-enter" style={{ '--stagger': 1 }}>{error}</div>}
+      {notice && <div className="moderation-message success p5-stagger-enter" style={{ '--stagger': 1 }}>{notice}</div>}
+      {loading && <p className="moderation-loading p5-stagger-enter" style={{ '--stagger': 1 }}>Loading pending moderation work...</p>}
       
-      {!loading && <div className="moderation-summary"><span><b>{queue.reports.length}</b> pending reports</span></div>}
+      {!loading && <div className="moderation-summary p5-stagger-enter" style={{ '--stagger': 1 }}><span><b>{queue.reports.length}</b> pending reports</span></div>}
       
       {!loading && (
-        <section className="moderation-section">
+        <section className="moderation-section p5-stagger-enter" style={{ '--stagger': 2 }}>
           <div className="moderation-section-head"><p>REPORTS</p><h3>Content reports</h3></div>
-          {queue.reports.length === 0 ? <div className="moderation-empty">No reports are waiting for review.</div> : queue.reports.map((report) => {
+          {queue.reports.length === 0 ? <div className="moderation-empty">No reports are waiting for review.</div> : queue.reports.map((report, index) => {
             
             const isExpanded = activeReportId === report.report_id;
 
             return (
               <article 
-                className={`moderation-item ${isExpanded ? 'expanded' : ''}`} 
+                className={`moderation-item p5-stagger-enter ${isExpanded ? 'expanded' : ''}`} 
                 key={report.report_id}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', '--stagger': Math.min(index + 3, 9) }}
               >
                 {/* Header Row */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
@@ -164,7 +164,7 @@ export default function AdminModeration() {
                     <div className="moderation-actions" style={{ justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                       <button onClick={() => { setActiveReportId(null); setAdminMessage(''); }}>CANCEL</button>
                       <button disabled={workingKey === `report-${report.report_id}`} onClick={() => resolveReport(report.report_id, 'dismissed')}>DISMISS REPORT</button>
-                      {report.owner_user_id && !report.owner_deleted_at && (
+                      {report.owner_user_id && report.owner_role !== 'admin' && (
                         <button
                           className="danger"
                           disabled={workingKey === `report-ban-${report.report_id}`}

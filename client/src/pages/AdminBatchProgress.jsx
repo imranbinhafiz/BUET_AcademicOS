@@ -163,16 +163,16 @@ export default function AdminBatchProgress() {
   };
 
   if (!user) {
-    return <section className="admin-page"><div className="admin-access-card"><h2>ADMIN CONTROL</h2><p>Log in with an administrator account to manage batch progress.</p></div></section>;
+    return <section className="admin-page"><div className="admin-access-card p5-stagger-enter" style={{ '--stagger': 0 }}><h2>ADMIN CONTROL</h2><p>Log in with an administrator account to manage batch progress.</p></div></section>;
   }
 
   if (!isAdmin) {
-    return <section className="admin-page"><div className="admin-access-card"><p className="admin-kicker">RESTRICTED AREA</p><h2>ADMIN CONTROL</h2><p>Your account is not an active administrator account. Student result data is never shown on this page.</p></div></section>;
+    return <section className="admin-page"><div className="admin-access-card p5-stagger-enter" style={{ '--stagger': 0 }}><p className="admin-kicker">RESTRICTED AREA</p><h2>ADMIN CONTROL</h2><p>Your account is not an active administrator account. Student result data is never shown on this page.</p></div></section>;
   }
 
   return (
     <section className="admin-page">
-      <div className="p5-page-header admin-header">
+      <div className="p5-page-header admin-header p5-stagger-enter" style={{ '--stagger': 0 }}>
         <div>
           <p className="admin-kicker">DATABASE-CONTROLLED WORKFLOW</p>
           <h2>BATCH TERM CONTROL</h2>
@@ -180,18 +180,18 @@ export default function AdminBatchProgress() {
         </div>
       </div>
 
-      {error && <div className="admin-message error">{error}</div>}
-      {notice && <div className="admin-message success">{notice}</div>}
+      {error && <div className="admin-message error p5-stagger-enter" style={{ '--stagger': 1 }}>{error}</div>}
+      {notice && <div className="admin-message success p5-stagger-enter" style={{ '--stagger': 1 }}>{notice}</div>}
 
-      {loading && <p className="admin-loading">Loading configured CSE batches...</p>}
+      {loading && <p className="admin-loading p5-stagger-enter" style={{ '--stagger': 1 }}>Loading configured CSE batches...</p>}
 
       {!loading && batches.length === 0 && (
-        <div className="admin-empty">No CSE batch progress rows have been configured yet.</div>
+        <div className="admin-empty p5-stagger-enter" style={{ '--stagger': 1 }}>No CSE batch progress rows have been configured yet.</div>
       )}
 
       {!loading && selectedBatch && (
         <>
-          <label className="admin-batch-picker">
+          <label className="admin-batch-picker p5-stagger-enter" style={{ '--stagger': 1 }}>
             <span>SELECT BATCH</span>
             <select value={selectedKey} onChange={(event) => { cancelReview(); setSelectedKey(event.target.value); }}>
               {batches.map((batch) => (
@@ -202,7 +202,7 @@ export default function AdminBatchProgress() {
             </select>
           </label>
 
-          <div className="admin-summary-grid">
+          <div className="admin-summary-grid p5-stagger-enter" style={{ '--stagger': 2 }}>
             <article className="admin-summary-card featured">
               <span>CURRENT TERM</span>
               <strong>{selectedBatch.current_term_code || 'GRADUATED'}</strong>
@@ -220,7 +220,7 @@ export default function AdminBatchProgress() {
             </article>
           </div>
 
-          <div className="admin-control-card">
+          <div className="admin-control-card p5-stagger-enter" style={{ '--stagger': 3 }}>
             <div>
               <p className="admin-kicker">NEXT LEGAL TRANSITION</p>
               {selectedBatch.current_term_code ? (
@@ -236,7 +236,7 @@ export default function AdminBatchProgress() {
           </div>
 
           {reviewing && (
-            <div className="admin-confirm-card">
+            <div className="admin-confirm-card p5-stagger-enter" style={{ '--stagger': 4 }}>
               <div>
                 <p className="admin-kicker">CONFIRM DATABASE ACTION</p>
                 <h3>Complete {selectedBatch.current_term_code} and open {nextTerm || 'the graduated state'}.</h3>
@@ -255,7 +255,7 @@ export default function AdminBatchProgress() {
             </div>
           )}
 
-          <section className="admin-history-card">
+          <section className="admin-history-card p5-stagger-enter" style={{ '--stagger': 5 }}>
             <div className="admin-history-heading">
               <div><p className="admin-kicker">AUDIT HISTORY</p><h3>Recorded batch transitions</h3></div>
               <span>{loadingHistory ? 'Loading...' : `${history.length} record${history.length === 1 ? '' : 's'}`}</span>

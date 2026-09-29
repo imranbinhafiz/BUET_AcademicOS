@@ -168,7 +168,7 @@ async function listModerationQueue() {
        reporter.name AS reporter_name,
        owner.user_id AS owner_user_id,
        owner.name AS owner_name,
-       owner.deleted_at AS owner_deleted_at,
+      owner.role AS owner_role,
        COALESCE(cr.comment, resource.title, '[Removed content]') AS target_preview,
        COALESCE(cr.course_code, resource.course_code) AS course_code
      FROM reports r
