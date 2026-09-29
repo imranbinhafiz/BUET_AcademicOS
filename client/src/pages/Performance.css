@@ -400,6 +400,19 @@
   font-size: 0.95rem;
 }
 
+.performance-login-link {
+  align-items: center;
+  box-sizing: border-box;
+  display: inline-flex;
+  height: 44px;
+  justify-content: center;
+  margin: 0;
+  min-width: 7rem;
+  text-align: center;
+  text-decoration: none;
+  width: fit-content;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .performance-control-row {

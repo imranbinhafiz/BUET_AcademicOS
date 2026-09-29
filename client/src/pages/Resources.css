@@ -741,3 +741,34 @@
   color: #888;
   margin: 0.25rem 0 0 0;
 }
+
+@media (max-width: 700px) {
+  .res-resource-card {
+    align-items: start;
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .res-vote-column {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .res-resource-badge,
+  .res-resource-details {
+    grid-column: 2;
+    min-width: 0;
+  }
+
+  .res-resource-meta {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    grid-column: 1 / -1;
+    margin-left: 0;
+  }
+
+  .res-resource-details p {
+    overflow-wrap: anywhere;
+  }
+}

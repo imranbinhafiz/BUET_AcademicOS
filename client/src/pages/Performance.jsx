@@ -256,7 +256,7 @@ export default function Performance() {
         <div className="performance-login-card">
           <h3>LOG IN TO TRACK RESULTS</h3>
           <p>Record official grade points for completed terms and explore anonymous batch analysis.</p>
-          <Link to="/login" className="p5-btn" style={{ textDecoration: 'none', display: 'inline-block', width: 'fit-content' }}>LOG IN</Link>
+          <Link to="/login" className="p5-btn performance-login-link">LOG IN</Link>
         </div>
       </section>
     );

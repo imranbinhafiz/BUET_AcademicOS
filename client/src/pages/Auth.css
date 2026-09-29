@@ -101,6 +101,15 @@
   background-color: rgba(9, 9, 11, 0.98);
 }
 
+.p5-wrapper :is(input, select, textarea):focus-visible,
+.p5-wrapper .p5-btn:focus-visible {
+  outline: none;
+}
+
+.p5-wrapper .p5-btn:focus-visible {
+  border-color: var(--p5-red);
+}
+
 select.p5-input {
   appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394949e'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
